@@ -1,0 +1,93 @@
+%\VignetteIndexEntry{Supplement to A tutorial on how to analyze ChIP-chip readouts using Bioconductor}
+%\VignetteDepends{Ringo, biomaRt, topGO}
+%\VignetteKeywords{microarray ChIP-chip NimbleGen nimblegen}
+%\VignettePackage{ccTutorial} % name of package
+
+%%%% HEAD SECTION: START EDITING BELOW %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% To compile the .Rnw file into a .tex file and figures:
+%% library("weaver");Sweave("ccTutorialSupplement.Rnw", driver=weaver())
+%% then run "make supp" for producing the PDF
+
+\documentclass[11pt, a4paper, fleqn]{article}
+\usepackage{geometry}\usepackage{color}
+\definecolor{darkblue}{rgb}{0.0,0.0,0.75}
+\usepackage[%
+baseurl={http://www.bioconductor.org},%
+pdftitle={Supplement to A tutorial on how to analyze ChIP-chip readouts using Bioconductor},%
+pdfauthor={Joern Toedling},%
+pdfsubject={Vignette},%
+pdfkeywords={Bioconductor},%
+pagebackref,bookmarks,%colorlinks,linkcolor=darkblue,citecolor=darkblue,%
+filecolor=darkblue,urlcolor=darkblue,pagecolor=darkblue,%
+raiselinks,plainpages,pdftex]{hyperref}
+
+\usepackage{amsmath,a4,t1enc, graphicx}
+
+%\usepackage{natbib}
+%\bibpunct{(}{)}{;}{a}{,}{,}
+
+\usepackage{verbatim}
+\usepackage{subfigure}
+
+\parindent0mm
+\parskip2ex plus0.5ex minus0.3ex
+
+\newcommand{\Robject}[1]{{\texttt{#1}}}
+\newcommand{\Rfunction}[1]{{\texttt{#1}}}
+\newcommand{\Rpackage}[1]{{\textit{#1}}}
+\newcommand{\Rclass}[1]{{\textit{#1}}}
+\newcommand{\Rmethod}[1]{{\textit{#1}}}
+\newcommand{\Rfunarg}[1]{{\texttt{#1}}}
+\newcommand{\phead}[1]{{\flushleft \sf \small \textbf{#1} \quad}}
+\newcommand{\todo}{{\textbf{TO DO:} \quad}}
+
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\thefigure}{S\arabic{figure}}
+
+\newcommand{\myincfig}[3]{%
+  \begin{figure}[htb]
+    \begin{center}
+      \includegraphics[width=#2]{#1}
+      \caption{\label{#1}\textit{#3}}
+    \end{center}
+  \end{figure}
+}
+
+\addtolength{\textwidth}{2cm}
+\addtolength{\oddsidemargin}{-1cm}
+\addtolength{\evensidemargin}{-1cm}
+\addtolength{\textheight}{2cm}
+\addtolength{\topmargin}{-1cm}
+\addtolength{\skip\footins}{1cm}
+
+
+%%%%%%% START EDITING HERE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+\SweaveOpts{eps=false, include=FALSE} % produce no 'eps' figures
+
+\title{Supplement: A tutorial on how to analyze ChIP-chip readouts using Bioconductor}
+\author{Joern Toedling, Wolfgang Huber}
+%\date{}
+\maketitle
+
+\tableofcontents
+
+<<prepare, echo=FALSE>>=
+options(length=60)
+set.seed(123)
+@ 
+
+This is only a placeholder. The real vignette has been
+pre-created, since it takes quite some time to process.
+
+\section*{Software versions}
+
+This supplement was generated using the following package versions:
+
+<<sessionInfo, echo=FALSE, results=tex>>=
+toLatex(sessionInfo())
+@
+
+\end{document}
