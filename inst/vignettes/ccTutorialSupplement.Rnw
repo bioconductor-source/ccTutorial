@@ -14,7 +14,7 @@
 \definecolor{darkblue}{rgb}{0.0,0.0,0.75}
 \usepackage[%
 baseurl={http://www.bioconductor.org},%
-pdftitle={Supplement to A tutorial on how to analyze ChIP-chip readouts using Bioconductor},%
+pdftitle={Supplement: Analyzing ChIP-chip data using Bioconductor},%
 pdfauthor={Joern Toedling},%
 pdfsubject={Vignette},%
 pdfkeywords={Bioconductor},%
@@ -30,6 +30,9 @@ raiselinks,plainpages,pdftex]{hyperref}
 \usepackage{verbatim}
 \usepackage{subfigure}
 
+\usepackage[compress]{natbib}
+\bibpunct{[}{]}{,}{n}{}{,} 
+
 \parindent0mm
 \parskip2ex plus0.5ex minus0.3ex
 
@@ -42,17 +45,25 @@ raiselinks,plainpages,pdftex]{hyperref}
 \newcommand{\phead}[1]{{\flushleft \sf \small \textbf{#1} \quad}}
 \newcommand{\todo}{{\textbf{TO DO:} \quad}}
 
+%% prepend a 'S' to the numbers of tables and figures, 
+%%  since this is a supplement
 \renewcommand{\thetable}{S\arabic{table}}
 \renewcommand{\thefigure}{S\arabic{figure}}
 
 \newcommand{\myincfig}[3]{%
-  \begin{figure}[htb]
+  \begin{figure}[tbp]
     \begin{center}
       \includegraphics[width=#2]{#1}
       \caption{\label{#1}\textit{#3}}
     \end{center}
   \end{figure}
 }
+
+% only allow puting floats that occupy 80% or more of a page on
+%  single pages (default is 0.5)
+\renewcommand{\floatpagefraction}{0.8}
+\renewcommand{\dblfloatpagefraction}{0.8}
+\addtolength{\textfloatsep}{-3pt}
 
 \addtolength{\textwidth}{2cm}
 \addtolength{\oddsidemargin}{-1cm}
@@ -65,20 +76,47 @@ raiselinks,plainpages,pdftex]{hyperref}
 %%%%%%% START EDITING HERE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-\SweaveOpts{eps=false, include=FALSE} % produce no 'eps' figures
+\SweaveOpts{include=FALSE, keep.source=TRUE} %
 
-\title{Supplement: A tutorial on how to analyze ChIP-chip readouts using Bioconductor}
+\title{Supplement: Analyzing ChIP-chip data using Bioconductor}
 \author{Joern Toedling, Wolfgang Huber}
-%\date{}
+\date{}
 \maketitle
 
 \tableofcontents
 
 \section{Introduction}
 
+This document supplements the manuscript ``Analyzing ChIP-chip data
+using Bioconductor''. 
+The manuscript demonstrates how to use the tools R and Bioconductor
+for a ChIP-chip data analysis.
+
+The R software can be obtained by following the installation
+instructions at \url{http://www.r-project.org}.
+
+For obtaining the Bioconductor packages that are needed
+for redoing this analysis, we recommend
+\Rfunction{biocLite} function from the 
+Bioconductor web site.
+Follow these steps from within R to install the required package
+(the data package \Rpackage{ccTutorial} is $> 300$~MB in size).
+%
+<<installPackages, eval=FALSE>>=
+source("http://www.bioconductor.org/biocLite.R")
+biocLite(c("Ringo", "biomaRt", "topGO", "ccTutorial"))
+@ 
+%
+Further information about the installation of Bioconductor packages
+can be found at
+\url{http://www.bioconductor.org/docs/install}.
+%
 <<prepare, echo=FALSE>>=
-options(length=60)
+options(length=60, "stringsAsFactors"=FALSE)
 set.seed(123)
+options(SweaveHooks=list(along=function() par(mar=c(2.5,4.2,4,1.5), font.lab=2),
+                         boxplot=function() par(mar=c(5,5,1,1), font.lab=4),
+                         dens=function() par(mar=c(4.1, 4.1, 0.1, 0.1), font.lab=2)))
 @ 
 
 <<loadpackage, results=hide>>=
@@ -89,12 +127,12 @@ library("ccTutorial")
 @ 
 
 This document has been written in the 
-\texttt{Sweave} \cite{Leisch2002} format, which combines
-explanatory text and the actual R source code that has been
+\texttt{Sweave}~\cite{Leisch2002} format, which combines
+explanatory text and the R source code that has been
 used in this analysis. One advantage of this format is that
 the analysis can easily be reproduced by the reader.
-An R package containing all the data and scripts used herein
-is available from the Bioconductor web site.
+The R~package \Rpackage{ccTutorial} contains all the data and scripts
+used in this manuscript.
 
 
 \section{Importing the data into R}
@@ -102,26 +140,26 @@ is available from the Bioconductor web site.
 The provided data are measurements of enrichment for
 H3K4me3 in heart and brain cells.
 For each microarray, the scanning output consists of two files, one holding
-the Cy3 intensities (the untreated input sample), the other one the Cy5 
-intensities, coming from the immuno-precipitated sample. 
+the Cy3 intensities (the untreated \textit{input} sample), the other
+one the Cy5  intensities from the immunoprecipitated sample.
 These files are tab-delimited text files
-in NimbleGen's \emph{pair} format. 
+in NimbleGen's \emph{pair} format.
 
 The microarray platform was a set of 4 arrays containing about 
-390k reporters
-each and meant to tile selected promoter regions in the
+390k reporters each and meant to tile selected promoter regions in the
 \emph{Mus musculus} genome (assembly \emph{mm5})
-with one base every 100bp.
-Thus for every sample, we have 8 files (4 arrays $\times$ 2 dyes).
+with one base every 100~bp.
+Thus for every sample, we have 8 files
+\mbox{(4 arrays $\times$ 2 dyes)}.
 
 <<locateData>>=
 pairDir <- system.file("PairData",package="ccTutorial") 
 list.files(pairDir, pattern="pair$")
 @
 
-In addition, there is one text file for each array that holds details
-on the samples, including which two \emph{pair} files belong to which 
-sample. 
+In addition, there is one text file for each array type that holds
+details on the samples, including which two \emph{pair} files belong
+to which sample.
 %
 <<exampleFilesTxt>>=
 read.delim(file.path(pairDir,"files_array1.txt"), header=TRUE)
@@ -129,29 +167,30 @@ read.delim(file.path(pairDir,"files_array1.txt"), header=TRUE)
 %
 The columns \texttt{FileNameCy3} and \texttt{FileNameCy5} hold which of the
 raw data files belong to which sample. 
-The immuno-precipitated extract 
-was tagged with the Cy5 dye in the experiment, so the column \texttt{Cy5} 
-essentially holds which antibody has been used for the immuno-precipitation, 
-in this case one against the histone modification \texttt{H3K4me3}.
+The immunoprecipitated extract was tagged with the Cy5 dye in the
+experiment; so the column \texttt{Cy5} holds which antibody has been
+used for the immunoprecipitation, in this case one against the histone
+modification \texttt{H3K4me3}.
 
-Furthermore, there is a file \texttt{spot\-types.text}
-describing the reporter categories
-on the array (you may know these Spot Types files from the Bioconductor
-packgae \Rpackage{limma}\cite{limma05}).
+The file \texttt{spot\-types.text}
+describes the reporter categories on the array (such
+Spot Types files are also used in the Bioconductor
+package \Rpackage{limma}~\cite{limma05}).
 
-Reading all these files, we can read in the raw reporter intensities
+From these files, we can read in the raw reporter intensities
 and obtain four objects of class \Rclass{RGList}, a class defined
 in package \Rpackage{limma}. Each object contains the readouts
-from all samples measured on the same array.
+from all samples measured on the same array type.
 %
 <<readNimblegen, cache=TRUE, results=hide>>=
 RGs <- lapply(sprintf("files_array%d.txt",1:4),
   readNimblegen, "spottypes.txt", path=pairDir)
 @ 
 %
-An \Rclass{RGList} object is essentially a list and contains the raw intensities
-of the two hybridizations for the red and green channel plus information on the
-reporters on the array and on the analyzed samples.
+An \Rclass{RGList} object is a list and contains the raw
+intensities of the two hybridizations for the red and green channel
+plus information about the reporters on the array and the analyzed
+samples.
 
 <<showRG>>=
 head(RGs[[1]]$R)
@@ -159,137 +198,149 @@ head(RGs[[1]]$G)
 tail(RGs[[1]]$genes)
 @ 
 %
-Among the read-in values are those coming from
+Among the read-in values are those coming from 
 reporters\footnote{the misleading slot name ``genes''
-is due to historical reasons, 
-dating back to the time when cDNA microarrays were mostly used
-to measure gene expression. In our case, each reporter is not associated to one
-gene but to one or more genomic locations.} 
-matching the genome sequence
-as well as some from ``control'' reporters put on the array by the manufacturer.
+is due to historical reasons, dating back to the time when cDNA
+microarrays were mostly used to measure gene expression. In our case,
+each reporter is not associated to one gene but to one or more genomic
+locations.}
+matching the genome sequence as well as some from the manufacturer's
+``control'' reporters on the array. 
 %
 <<showProbeStatus>>=
 table(RGs[[1]]$genes$Status)
 @ 
 %
-The \Rclass{RGList} is a common class for raw two-color data, 
-so the following steps can easily be applied to other, non-NimbleGen 
-microarrays, which for example can be read in into R
+The \Rclass{RGList} is a common class for raw two-color data.
+Thus, the following steps can easily be applied to other,
+non-NimbleGen  microarrays, which for example can be read in into R
 using \Rpackage{limma}'s function \Rfunction{read.maimages}.
 
 
 \section{Quality assessment}
 
-First, we look at the spatial 
-distribution of the intensities on the array. This can be useful for
-detecting obvious artifacts on the array, such as scratches, bright
-spots, finger prints etc., which may render parts or all of the
-readouts of one hybridization useless.
+First, we look at the spatial distribution of the intensities on the
+array.
+This is useful for detecting obvious artifacts on the array, such as
+scratches, bright spots, finger prints etc., which may render parts or
+all of the readouts of one hybridization useless.
 
-We construct one picture showing the spatial distributions for
-all arrays and both channels. 
+For demonstration, we first show three array surface plots with
+artifacts. These three microarrays were generated for another
+ChIP-chip study for histone modifications~\cite{Fischer2008}.
+See the spatial distribution plots of these arrays in
+Figure~\ref{arraysWithArtifacts.jpg}.
+The coordinates in the picture correspond to coordinates on the
+surface of the microarray.
+The  color of the dots represents the value of the raw reporter
+intensity, with brighter shades of green corresponding to higher
+intensities. For well-hybridized microarrays, a homogeneous picture
+can be expected.
+Two of the displayed three arrays show strong artifacts.
+The array in the left panel shows two distinct problems.
+The bright rim on the picture suggests that all reporters near the rim
+of the array high raw intensities.
+The second artifact is the wave pattern on the surface.
+This effect is known as a Moir\'e pattern in image processing and
+emerged during the scanning process of the microarray.
+The spatial distribution of Cy5 channel intensities on this array
+looks homogeneous (data not shown), which provides more evidence that
+the artifacts in this plot are likely due to errors in scanning the
+Cy3 intensities of this array.
+The array in the middle panel shows a large artifact that only affects
+the right side of the array.
+The array in the right panel finally shows a bright spot in the center
+of the array and slightly higher intensities in the upper half of the
+array than in the lower array.
+However, these artifacts are mild in comparison with the other two
+arrays. The array on the right side was kept for further analysis in
+the study, while the two on the left side and in the middle were
+replaced by newly hybridized arrays.
+
+\myincfig{arraysWithArtifacts.jpg}{0.9\textwidth}{Spatial
+  distribution of reporter intensities on microarrays from another
+  ChIP-chip study~\cite{Fischer2008}.  Coordinates in the picture
+  correspond to coordinates on the surface   of the microarray. The
+  color of the dots represents the value of the raw reporter
+  intensity, with brighter shades of green corresponding to higher
+  intensities. For well-hybridized microarrays, a homogeneous picture
+  can be expected.The two arrays in the left and   the middle panel
+  show strong artifacts and were excluded from later analyses. The
+  array in the right panel shows weak artifacts and was kept for
+  later analysis.} 
+
+For the data of Barrera~\textit{et~al.}~\cite{Barrera2008}, we
+construct one picture showing the spatial distributions for all arrays
+and both channels.
 
 <<imageRG,eval=FALSE,results=hide,echo=TRUE>>=
 RG1breaks <- c(0,quantile(RGs[[1]]$G, probs=seq(0,1,by=0.1)),2^16)
+jpeg("ccTutorialArrayImages.jpg", quality=100,
+     height=1074*1.5, width=768*1.5)
+par(mar=c(0.01,0.01,2.2,0.01))
 layout(matrix(c(1,2,5,6,3,4,7,8,9,10,13,14,11,12,15,16),
        ncol=4,byrow=TRUE))
 for (this.set in 1:4){
   thisRG <- RGs[[this.set]]
   for (this.channel in c("green","red")){
-    my.colors <- colorRampPalette(c("black",paste(this.channel,c(4,1),sep="")))(length(RG1breaks)-1)
+    my.colors <- colorRampPalette(c("black",paste(this.channel,c(4,1),
+                                    sep="")))(length(RG1breaks)-1)
     for (arrayno in 1:2){
       image(thisRG, arrayno, channel=this.channel, 
-            mybreaks=RG1breaks, mycols=my.colors)
+            mybreaks=RG1breaks, mycols=my.colors, frame.plot=FALSE)
+      mtext(side=3, line=0.2, font=2, text=colnames(thisRG[[toupper(
+            substr(this.channel,1,1))]])[arrayno])
 }}}
-@
-<<imageRG,eval=FALSE,results=hide,echo=FALSE>>=
-RG1breaks <- c(0,quantile(RGs[[1]]$G, probs=seq(0,1,by=0.1)),2^16)
-jpeg("ccTutorialArrayImages.jpg", quality=100, height=1600, width=1600)
-par(mar=c(1,1,4,1))
-layout(matrix(c(1,2,5,6,3,4,7,8,9,10,13,14,11,12,15,16),
-       ncol=4,byrow=TRUE))
-for (this.set in 1:4){
-  thisRG <- RGs[[this.set]]
-  for (this.channel in c("green","red")){
-    my.colors <- colorRampPalette(c("black",paste(this.channel,c(4,1),sep="")))(length(RG1breaks)-1)
-    for (arrayno in 1:2){
-      image(thisRG, arrayno, channel=this.channel, 
-            mybreaks=RG1breaks, mycols=my.colors)
-    }
-  }
-}
 dev.off()
 @
 
-\myincfig{ccTutorialArrayImages.jpg}{1.0\textwidth}{Spatial distribution of raw reporter intensities laid out by the reporter position on the microarray surface. Each pair of one green and one red image on top of each other are the Cy3 and Cy5 readouts of the same hybridized microarray.}
+\myincfig{ccTutorialArrayImages.jpg}{0.95\textwidth}{Spatial
+  distribution of raw reporter intensities laid out by the reporter
+  position on the microarray surface. Each pair of one green and one
+  red image on top of each other are the Cy3 and Cy5 readouts of the
+  same hybridized microarray.}
 
-See Figure \ref{ccTutorialArrayImages.jpg} for the image.
-
+See Figure \ref{ccTutorialArrayImages.jpg} for the images.
 Minor artifacts can be seen. The arrays of the first set (48153 and 48172)
 show a blotch of lower intensities in the upper right area of the array.
 These artifacts affect only a small part of the
 array and thus probably have a negligible effect 
 on the results. The reporters in those affected areas of the array 
 will yield meaningless readouts but enriched regions will be determined
-based on a set of multiple reporters that are distributed over the microarray
-surface and not on single reporters only.
-
-It may also be useful to look at the absolute distribution of 
-the single-channel densities.
-%
-<<plotDensities0, eval=FALSE>>=
-plotDensities(RGs[[3]]) 
-@
-<<plotDensities, echo=FALSE, results=hide>>=
-## this chunk is evaluated instead of the previous one to obtain a prettier figure
-pdf("ccTutorial-plotDensities.pdf", width=6, height=4)
-par(font.lab=2)
-plotDensities(RGs[[3]])
-dev.off()
-@
-%
-\myincfig{ccTutorial-plotDensities}{0.6\textwidth}{Densities of the raw Cy3 (green, input) and Cy5 (red, ChIP sample) intensities as read from the third microarray of the brain and heart samples, respectively}
-
-See Figure \ref{ccTutorial-plotDensities} for the densities.
-We see some obvious differences between red and green channel
-intensities.
+based on a set of multiple reporters that are distributed over the
+microarray surface and not on single reporters only.
+Also a few arrays are brighter than others, which indicate higher raw
+intensities for the respective arrays. 
 These effects could be due to a larger amounts of DNA being hybridized.
-The preprocessing step later on is able to correct for such shifts.
+The scaling step during  preprocessing later on is able to correct for
+such shifts.
 
-On all arrays in our set, the Cy3 channel holds the
-intensities from the untreated input sample, 
-and the Cy5 channel holds the ChIP result for 
-heart and heart, respectively. 
+On all arrays in our set, the Cy3 channel holds the intensities from
+the untreated \textit{input} sample, and the Cy5 channel holds the
+ChIP result for heart and heart, respectively. 
 We investigate whether this experiment setup is reflected in the
 reporter intensity correlation per channel (see Figure S3).
 Compare these two plots:
-<<corPlotRG2G, eval=FALSE>>=
+<<corPlotRG2G, fig=TRUE, include=FALSE, height=6, width=6, results=hide>>=
 corPlot(log2(RGs[[2]]$G))
-corPlot(log2(RGs[[2]]$R))
 @ 
-%
-<<corPlotRG2G, echo=FALSE, results=hide>>=
-png('ccTutorial-corPlotRG2G.png',height=600, width=600)
-corPlot(log2(RGs[[2]]$G))
-dev.off()
-png('ccTutorial-corPlotRG2R.png',height=600, width=600)
+<<corPlotRG2R, fig=TRUE, include=FALSE, height=6, width=6, results=hide>>=
 corPlot(log2(RGs[[2]]$R))
-dev.off()
 @ 
 %
 \begin{figure}[t!b]%
 \centering
 \subfigure[ ]{
-\includegraphics[width=0.45\textwidth]{ccTutorial-corPlotRG2G.png}
+\includegraphics[width=0.4\textwidth]{ccTutorialSupplement-corPlotRG2G}
 }
 \hspace{0.3cm}
 \subfigure[ ]{
-\includegraphics[width=0.45\textwidth]{ccTutorial-corPlotRG2R.png}
+\includegraphics[width=0.4\textwidth]{ccTutorialSupplement-corPlotRG2R}
 }
 \label{corPlotsRG2}
 \caption{\textit{Scatterplot and Spearman correlation of the raw
 intensities from the two microarrays for
-{\bf \textnormal{(a)}} the Cy3 channel, the genomic \emph{input} samples 
+{\bf \textnormal{(a)}} the Cy3 channel, the genomic \textit{input} samples 
 {\bf \textnormal{(b)}} the Cy5 channel, the H3K4me3-ChIP sample for
 \emph{M. musculus} brain and heart cells.}}
 \end{figure}
@@ -297,13 +348,58 @@ intensities from the two microarrays for
 See Figure S\ref{corPlotsRG2} for plots comparing the two arrays.
 In the scatter plots of raw reporter intensities,
 the fraction of dots at the diagonal is higher for the
-\emph{input} samples than for the ChIP samples.
+\textit{input} samples than for the ChIP samples.
 Concordantly, the correlation between the intensities
-of the \emph{input} samples is higher than between
+of the \textit{input} samples is higher than between
 the ChIP samples (0.877 versus 0.734).
+
+We also show the same plots for two of the previous arrays with
+artifacts (left and right panels in
+Figure~\ref{arraysWithArtifacts.jpg}). 
+With these arrays, the Cy3 channel also holds the \textit{input} samples,
+while the Cy5 channel are the ChIP samples.
+
+\begin{figure}[t!b]%
+\centering
+\subfigure[ ]{
+\includegraphics[width=0.4\textwidth]{badRGcorPlotG.jpg}
+}
+\hspace{0.3cm}
+\subfigure[ ]{
+\includegraphics[width=0.4\textwidth]{badRGcorPlotR.jpg}
+}
+\label{corPlotsBadRG}
+\caption{\textit{Scatterplot and Spearman correlation of the raw
+intensities from two microarrays with artifacts (see
+Figure~\ref{arraysWithArtifacts.jpg} for
+{\bf \textnormal{(a)}} the Cy3 channel, the genomic \textit{input}
+samples
+{\bf \textnormal{(b)}} the Cy5 channel, ChIP sample for
+\emph{M. musculus} brain and heart cells.}}
+\end{figure}
+
+These correlation plots are shown in Figure~\ref{corPlotsBadRG}. The
+\textit{input} (Cy3) intensities do not show any correlation, while the
+ChIP intensities of these samples show a much better correlation. This
+is unexpected, since the ChIP samples used antibodies against
+different histone modifications (H4ac and H3K4me2), while the
+\textit{input} samples are both genomic DNA from the same cell type
+(cell line C2C12).
 
 
 \section{Mapping reporters to the genome}
+
+A mapping of reporters to genomic coordinates is usually provided
+by the array manufacturer. 
+For several reasons, however, remapping the reporter
+sequences to the genome may be useful.
+Here, the microarray had been designed on an 
+outdated assembly of the mouse genome (mm5, May 2004).
+The reporter sequences were remapped to the current,
+almost final assembly of the mouse genome (mm9, July 2007).
+Remapping also allows you to specify custom criteria
+for what degree of sequence identity you require for a match and for
+uniqueness of a match.
 
 We extracted the reporter nucleotide sequences from the downloaded
 NDF (NimbleGen Design Files) files.
@@ -312,6 +408,18 @@ the alignment tool \emph{Exonerate} \cite{Slater2005}.
 We required 97\% sequence identity for a 
 match\footnote{Remapping 1.5 million reporters took
 about 100 processor hours on an AMD Opteron Processor 275.}.
+Since the reporters on the microarray were 50mers, a sequence identity
+of 97\% corresponds to one mismatch at most.
+The implicit assumption is that if 49 out of 50 nucleotides are
+complimentary that would be sufficient for hybridization.
+We did not consider a more complex hybridisation model, in which the
+position of the mismatch in the reporter sequence and its impact on
+secondary structure formation are taken into account.
+However, with one mismatch per 50mer, there is always a perfert match
+segment of $\geq 25$~nucleotides in length.
+A matching segment of 18 or more nucleotides in length was reported to
+be sufficient for hybridization~\cite{Rennie2008}.
+
 Exonerate was run matching the reporter sequences in the Fasta file
 \texttt{RenMM5\-Tiling\-Probe\-Sequences.fsa} against each 
 chromosome's sequence using the shell script 
@@ -320,9 +428,9 @@ output files into one single file using the Perl script
 \texttt{condense\-Exonerate\-Output.pl}\footnote{all the scripts mentioned
 here are included in the \texttt{scripts} directory of the package}.
 
-From this result file, we can construct an object of class \Rclass{probeAnno}
+From this result file, we construct an object of class \Rclass{probeAnno}
 to store the mapping between reporters and genome positions.
-
+%
 <<posToProbeAnno, cache=TRUE, results=hide>>=
 probeAnno <- posToProbeAnno(file.path(system.file("exonerateData",
   package="ccTutorial"), "allChromExonerateOut.txt"))
@@ -336,25 +444,68 @@ arrayName(probeAnno) <- "2005-06-17_Ren_MM5Tiling"
 show(probeAnno)
 ls(probeAnno)
 @ 
+%
+For each genomic position matched by a reporter, it was recorded
+whether it was the sole match position of that reporter in the genome
+or whether that reporter also matched other genomic
+positions\footnote{More precisely, a reporter matches a 25-nucleotide
+  ``segment''. That segment, however, is uniquely defined by the
+  genomic position of its central nucleotide, which is why I refer to
+  the ``position'' that is matched by a reporter.}.
+For example, how many reporter-match positions on chromosome~9
+are unique matches of those reporters (code: 0) and how many are
+matched by reporters that have multiple matches in the genome
+(code:3)?
+%
+<<showProbeAnno2>>=
+table(probeAnno["9.unique"])
+@ 
+%
+The majority of match positions are unique reporter match
+positions.
+The intensities of reporters matching multiple genomic locations will
+be excluded from later analysis (smoothing, identification of
+ChIP-enriched regions), since the readouts of these reporters are
+ambiguous.
+
+\subsection{Average spacing between reporter mach positions}
+
+<<reporterSpacing, figure=TRUE, include=FALSE, width=8, height=6, dens=TRUE>>=
+startDiffByChr <- lapply(as.list(allChrs), function(chr){
+  chrsta <- probeAnno[paste(chr,"start",sep=".")]
+  chruni <- probeAnno[paste(chr,"unique",sep=".")]
+  ## get start positions of unique reporter match positions
+  return(diff(sort(chrsta[chruni=="0"])))})
+startDiff <- unlist(startDiffByChr, use.names=FALSE)
+table(cut(startDiff, breaks=c(0,50,99,100,200,1000,max(startDiff))))
+@
+%
+The majority of unique reporter match positions have an offset of
+100~bp between their start positions.
 
 
 \section{Genome annotation}
 
-Later on, we are going to relate found enriched regions
-to annotated genome features, such as gene start and end positions.
+Later on, found enriched regions will be related to annotated genome
+features, such as gene start and end positions.
 Using the Bioconductor package \Rpackage{biomaRt} \cite{Durinck2005},
 we can obtain an up-to-date annotation of the mouse genome
-from the Ensembl data base \cite{Birney2004} (release 38, December 2007).
+from the Ensembl data base \cite{Birney2004}.
 
 <<makeGffWithBiomaRt, eval=FALSE>>=
 ensembl  <- useMart("ensembl", dataset="mmusculus_gene_ensembl")
-gene.ids <- unique(unlist(lapply(as.list(c(1:19,"X","Y")), function(this.chr) getBM(attributes="ensembl_gene_id", filters="chromosome_name", values=this.chr, mart=ensembl)[,1]), use.names=FALSE))
-sel.attributes=c("ensembl_gene_id", "mgi_symbol", "chromosome_name", "strand", "start_position","end_position", "description")
-mm9genes <- getBM(attributes=sel.attributes, filters="ensembl_gene_id", value=gene.ids, mart=ensembl)
+gene.ids <- unique(unlist(lapply(as.list(c(1:19,"X","Y")), 
+   function(this.chr) 
+    getBM(attributes="ensembl_gene_id", filters="chromosome_name", 
+          values=this.chr, mart=ensembl)[,1]), use.names=FALSE))
+    sel.attributes=c("ensembl_gene_id", "mgi_symbol", "chromosome_name",
+          "strand", "start_position","end_position", "description")
+mm9genes <- getBM(attributes=sel.attributes, filters="ensembl_gene_id",
+                  value=gene.ids, mart=ensembl)
 @ 
 %
-For later ease of use, we replace the formal element names retrieved from the
-data base by simpler ones.
+For later use, we replace the formal element names retrieved
+from the data base by simpler ones.
 %
 <<replaceMm9GenesNames, eval=FALSE>>=
 mm9genes$name    <- mm9genes$"ensembl_gene_id"
@@ -376,7 +527,8 @@ if (any(duplicated(mm9genes$name))){
   dupl <- unique(mm9genes$name[duplicated(mm9genes$name)])
   G <- lapply(as.list(dupl), function(this.gene){
     this.gff <- subset(mm9genes,name == this.gene)
-    if (nrow(unique(this.gff[,c("name","chr","start","end","description")]))>1) return(this.gff[1,,drop=FALSE])
+    if (nrow(unique(this.gff[,c("name","chr","start","end",
+        "description")]))>1) return(this.gff[1,,drop=FALSE])
     non.zero.gff <- subset(this.gff, nchar(symbol)>0)
     this.other.sym <- NULL
     if (nrow(non.zero.gff)> 0){
@@ -388,11 +540,13 @@ if (any(duplicated(mm9genes$name))){
     } else { this.new.sym <- "" }
     this.gff$symbol[1] <- this.new.sym
     if (!is.null(this.other.sym))
-      this.gff$description[1] <- paste(this.gff$description[1],this.other.sym,sep=";")
+      this.gff$description[1] <- paste(this.gff$description[1],
+                                       this.other.sym,sep=";")
     return(this.gff[1,,drop=FALSE])
   })
-  mm9genes <- rbind(mm9genes[-which(mm9genes$name %in% dupl),],do.call("rbind",G))
-}#if (any(duplicated(mm9genes$name)))
+  mm9genes <- rbind(mm9genes[-which(mm9genes$name %in% dupl),],
+                    do.call("rbind",G))
+}
 @ 
 %
 Finally, we reorder the table rows by gene chromosome and start position.
@@ -428,8 +582,26 @@ or for which there is \emph{no biological data} (ND) available.
 %
 <<getGenesGOAnnotation, eval=FALSE>>=
 ensembl  <- useMart("ensembl", dataset="mmusculus_gene_ensembl")
-mm9GO <- getBM(attributes=c("ensembl_gene_id","go","evidence_code"), filters="ensembl_gene_id", value=mm9genes$name, mart=ensembl)
+ontoGOs <- lapply(as.list(c("biological_process","cellular_component", 
+                  "molecular_function")), function(onto){
+  ontoBM <- getBM(mart=ensembl, attributes=c("ensembl_gene_id", 
+                   paste("go",onto,"id", sep="_"), 
+                   paste("go",onto,"linkage_type", sep="_")), 
+                  filters="ensembl_gene_id", value=mm9genes$name)
+  names(ontoBM) <- c("ensembl_gene_id","go","evidence_code")
+  ontoBM <- subset(ontoBM,!( evidence_code %in% c("","IEA","NAS","ND")))
+})
+mm9GO <- do.call("rbind", ontoGOs)
+@ 
+
+% old version, does not work with new Ensembl version:
+<<getGenesGOAnnotation, echo=FALSE, eval=FALSE>>=
+mm9GO <- getBM(attributes=c("ensembl_gene_id","go","evidence_code"), 
+          filters="ensembl_gene_id", value=mm9genes$name, mart=ensembl)
 mm9GO <- subset(mm9GO, !( evidence_code %in% c("", "IEA","NAS","ND")))
+@ 
+
+<<getGOperGene, eval=FALSE>>=
 mm9.gene2GO <- with(mm9GO, split(go, ensembl_gene_id))
 @ 
 <<loadGenesGOAnnotation, echo=FALSE>>=
@@ -456,6 +628,8 @@ with, e.g., (10,50] meaning 11 to 50 reporters.
 For later use, we determine which genes have a sufficient number
 - arbitrarily we say 5 -
 of reporters mapped to their upstream region or inside of them.
+We also determine which of these genes have been annotated with at
+least one GO term.
 %
 <<arrayGenes>>=
 arrayGenes <- names(mm9.g2p)[listLen(mm9.g2p)>=5]
@@ -465,10 +639,21 @@ arrayGenesWithGO <- intersect(arrayGenes, names(mm9.gene2GO))
 
 \section{Preprocessing}
 
-Following quality assessment of the raw data,
-we derive log2 fold changes Cy5/Cy3 for each reporter and scale these
-by subtracting Tukey's biweight mean from each log2 ratio,
+We derive $\log_2$ fold changes Cy5/Cy3 for each reporter and scale
+these by subtracting Tukey's biweight mean from each log2 ratio,
 the standard scaling procedure suggested by NimbleGen.
+We only perform this scaling procedure, since we are not aware of any
+normalization method that is completely appropriate for ChIP-chip
+with antibodies against histone modifications.
+One common assumption of many normalization methods is that the
+variation of almost all reporter levels does not reflect biological
+variation between samples/conditions (\textit{input}, ChIP) but is
+non-biological variation, \textit{e.~g.}, due to differences in sample
+processing and hybridization.
+This assumption probably does not hold in this case, as
+the fraction of histones bearing post-translational modifications
+cannot safely be assumed to be small.
+
 Each of the four microarrays used contains a unique set of reporters.
 Thus, we preprocess the arrays separately by
 type and only then combine the results into
@@ -494,77 +679,209 @@ case).
 <<showX>>=
 show(X)
 @ 
-%
-\begin{comment}
-\section{The effects of preprocessing}
-<<boxplotX, eval=FALSE>>=
-boxplot(data.frame(exprs(X)))
-@ 
-<<boxplotX, eval=FALSE>>=
-jpeg(file="ccTutorial-boxplotX.jpg", width=480, height=480)
-par(mar=c(4,4,1,1), font.lab=2)
-boxplot(data.frame(exprs(X)))
-dev.off()
-@ 
-\myincfig{ccTutorial-boxplotX.jpg}{0.6\textwidth}{Boxplots of the normalized fold-changes for H3K4me3 ChIP in \emph{M. musculus} brain and heart cells.}
-See Figure \ref{ccTutorial-boxplotX.jpg} for the boxplots.
-\end{comment}
 
 
-\section{Preprocessed reporter intensities around the \emph{Crmp1} gene}
+\section{Preprocessed reporter intensities around the gene \emph{Crmp1} }
 
-We visualize the preprocessed H3K4me3 ChIP-chip reporter-wise readouts around the
-start of the \emph{Crmp1} gene. 
+We visualize the preprocessed H3K4me3 ChIP-chip reporter-wise
+readouts around the start of the \textsl{Crmp1} gene. 
 H3K4me3 has frequently been shown to be associated to active 
-transcription (e.g., \cite{Fischer2008}) and the gene
-Crmp1 has been reported as being expressed in brain cells \cite{Hamajima1996}.
+transcription (e.\ g.\ , \cite{Fischer2008}) and the gene
+\textsl{Crmp1} has been reported as being expressed in brain
+cells~\cite{Hamajima1996}.
 %
-<<chipAlongChromCrmp1, eval=FALSE>>=
-chipAlongChrom(X, chrom="5", xlim=c(37.63e6,37.64e6), probeAnno=probeAnno, gff=mm9genes, ylim=c(-3,5), paletteName="Set2")
+<<chipAlongChromCrmp1, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
+chipAlongChrom(X, chrom="5", xlim=c(37.63e6,37.64e6), probeAnno=probeAnno,
+               gff=mm9genes, ylim=c(-3,5), paletteName="Set2")
 @ 
 %
-<<chipAlongChromCrmp1, echo=FALSE, results=hide>>=
-# evaluate this instead of previous chunk for prettier figure
-pdf(file="ccTutorial-chipAlongChromCrmp1.pdf", width=8, height=4)
-par(mar=c(2.5,4.2,4,1.5), font.lab=2)
-chipAlongChrom(X, chrom="5", xlim=c(37.63e6,37.64e6), probeAnno=probeAnno, gff=mm9genes, ylim=c(-3,5), paletteName="Set2")
-dev.off()
-@ 
-%
-\myincfig{ccTutorial-chipAlongChromCrmp1}{0.98\textwidth}{Normalized reporter intensities for H3K4me3 ChIP around the TSS of the \texttt{Crmp1} gene in \emph{M. musculus} brain and heart cells. The ticks below the genomic coordinate axis on top indicate genomic positions matched by reporters on the microarray. The blue arrows on the bottom mark the Crmp1 gene with the arrow direction indicating that the gene is located on the Watson strand.}
+\myincfig{ccTutorialSupplement-chipAlongChromCrmp1}{0.9\textwidth}{%
+Normalized reporter intensities for H3K4me3 ChIP around the TSS of the
+\textsl{Crmp1} gene in \emph{M. musculus} brain and heart cells. The
+ticks below the genomic coordinate axis on top indicate genomic
+positions matched by reporters on the microarray. The blue arrows on
+the bottom mark the Crmp1 gene with the arrow direction indicating
+that the gene is located on the Watson strand.}
 
-See the result in Figure \ref{ccTutorial-chipAlongChromCrmp1}.
-In brain cells, the intensities for enrichment of H3K4me3 around the gene's
-start position tend to be positive, 
+See the result in Figure \ref{ccTutorialSupplement-chipAlongChromCrmp1}.
+In brain cells, the intensities for enrichment of H3K4me3 around the
+gene's start position tend to be positive, 
 while the signal for heart cells is around or below zero.
 
 
 \section{Smoothing of reporter intensities}
+
+To ameliorate specific reporter effects as well as the stochastic
+noise, we perform a smoothing over individual reporter intensities
+before looking for ChIP-enriched regions.
+A window of 900~bp width is slided along the chromosome, and the
+reporter level at genomic position $x_0$ is replaced by the median
+over the intensities of those reporters mapped inside the window
+centered at $x_0$.
+
+Factors taken into account in the choice of the sliding-window width
+were the size distribution of DNA fragments after sonication
+(commonly around 1~kbp) and the spacing between reporter matches
+on the genome (mostly~100~bp).
+We chose a window-width of 900~bp, which was slightly less than the
+average fragment size and meant that most windows included $>=5$
+reporters.
+With this window width, we could be sure that the signal is not
+smoothed over many fragments and was calculated as the median
+over $\geq 5$ reporters.
+At any position $x_0$ at which the window comprised less than three
+reporter-matched positions, the smoothed level was flagged as missing,
+as the data was insufficient to provide information about ChIP
+enrichment at such a position.
 %
 <<smoothing, cache=TRUE, results=hide>>=
-smoothX <- computeRunningMedians(X, probeAnno=probeAnno, modColumn = "Tissue", allChr = allChrs, winHalfSize = 450, min.probes=5)
+smoothX <- computeRunningMedians(X, probeAnno=probeAnno, 
+   modColumn="Tissue", allChr=allChrs, winHalfSize=450, min.probes=5)
 sampleNames(smoothX) <- paste(sampleNames(X),"smoothed",sep=".")
 @ 
 %
 Compare the smoothed reporter intensities with the non-smoothed ones around the
 start of the gene \emph{Crmp1}.
 %
-<<plotSmoothedX0, eval=FALSE>>=
-chipAlongChrom(X, chrom="5", xlim=c(37.63e6,37.64e6), probeAnno=probeAnno, gff=mm9genes, paletteName="Set2", ylim=c(-3,5))
-chipAlongChrom(smoothX, chrom="5", xlim=c(37.63e6,37.64e6), probeAnno=probeAnno,ilwd=4, paletteName="Dark2", add=TRUE)
-@ 
-<<smoothAlongChromCrmp1, echo=FALSE, results=hide>>=
-pdf(file="ccTutorial-smoothAlongChromCrmp1.pdf", width=8, height=4)
-par(mar=c(2.5,4.2,4,1.5), font.lab=2)
-chipAlongChrom(X, chrom="5", xlim=c(37.63e6,37.64e6), probeAnno=probeAnno, gff=mm9genes, paletteName="Set2", ylim=c(-3,5))
-chipAlongChrom(smoothX, chrom="5", xlim=c(37.63e6,37.64e6), probeAnno=probeAnno,ilwd=4, paletteName="Dark2", add=TRUE)
-dev.off()
+<<smoothAlongChromCrmp1, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
+chipAlongChrom(X, chrom="5", xlim=c(37.63e6,37.64e6), probeAnno=probeAnno,
+               gff=mm9genes, paletteName="Set2", ylim=c(-3,5))
+chipAlongChrom(smoothX, chrom="5", xlim=c(37.63e6,37.64e6), add=TRUE,
+               probeAnno=probeAnno,ilwd=4, paletteName="Dark2")
 @ 
 %
-\myincfig{ccTutorial-smoothAlongChromCrmp1}{0.98\textwidth}{Normalized and smoothed reporter intensities for H3K4me3 ChIP around the TSS of the gene \emph{Crmp1} in \emph{M. musculus} brain and heart cells.}
+\myincfig{ccTutorialSupplement-smoothAlongChromCrmp1}{0.9\textwidth}{Normalized and smoothed reporter intensities for H3K4me3 ChIP around the TSS of the gene \emph{Crmp1} in \emph{M. musculus} brain and heart cells.}
 
-See Figure \ref{ccTutorial-smoothAlongChromCrmp1} for a comparison of the 
-original and smoothed reporter levels around the gene \emph{Crmp1}.
+See Figure \ref{ccTutorialSupplement-smoothAlongChromCrmp1} for a
+comparison of the original and smoothed reporter levels around the
+gene \emph{Crmp1}.
+
+
+\section{Alternative methods for finding ChIP-enriched regions}
+
+We have presented the algorithm of package \Rpackage{Ringo} for
+finding Chip-enriched regions in ChIP-Chip against H3K4me3.
+There are important differences between ChIP-chip against histone
+modifications and ChIP-chip against transcription factors.
+With transcription factors, it is safe to assume that the majority of
+genomic regions will not show a real binding site for that
+transcription factor.
+Hence, most reporters on the microarray will not indicate true
+enrichment, at least not when the tiling microarrays represent
+the whole genome or an unbiased subset of the genome.
+This situation is beneficial for the data preprocessing and for
+identifying ChIP-enriched regions, since most of the data
+can safely be assumed to show non-enrichment.
+With histone modifications, on the other hand, the degree and extent
+to which the genome shows a certain histone modification can only be
+guessed at the present time.
+This situation make estimation of the background distribution of
+reporter levels under non-enrichment difficult.
+
+Moreover, transcription factor binding sites are highly localized
+point effects, meaning that the transcription factor binds at one
+specific position directly or indirectly to the DNA and the signal
+will show a peak shape around this position.
+The highest point of the signal peak will be as close to the actual
+binding site as the reporter-tiling on the microarray allows
+(see~\cite{BourgonPhD} for an extended discussion and for a derived
+model of TF ChIP-chip data).
+With histone modifications, the enzyme which modifies the
+histone tail is unlikely to act on only one single histone protein,
+but will modify a number of nearby histones.
+A single-nucleosome resolution study of histone modifications in
+\emph{Saccharomyces cerevisiae} has shown that modifications occur in
+the form of broad modified domains and that adjacent nucleosomes
+mostly share the same modifications~\cite{Liu2005}.
+
+Many other suggested algorithms for finding ChIP-enriched regions
+are based on the assumption that the fraction of reporters that show
+enrichment is very small and are therefore not applicable to ChIP-chip
+against histone modifications.
+However, the algorithm in \Rpackage{Ringo} is by no means the only
+suitable algorithm for this task.
+Users can choose to apply other algorithms that are contained in other
+R/Bioconductor packages.
+In the following, we demonstrate an example application of one other
+algorithm to the data.
+
+\phead{CMARRT}
+The package \Rpackage{CMARRT}~\cite{Kuan2008} can be obtained from
+\url{http://www.stat.wisc.edu/~kuanp/CMARRT}~.
+Based on the example source code in the package vignette,
+we use \Rpackage{CMARRT} to identify which regions are enriched by
+ChIP against H3K4me3 in brain cells.
+%
+<<getChersXD, echo=FALSE>>=
+data("chersX")
+chersXD <- as.data.frame(chersX)
+@ 
+<<tryCmarrt, cache=TRUE>>=
+library("CMARRT")
+cmarrtDat <- do.call("rbind", lapply(as.list(allChrs), function(chr){
+  areUni <- probeAnno[paste(chr,"unique",sep=".")]==0
+  chrDat <- data.frame("chr"=rep(chr, sum(areUni)),
+     "start"=probeAnno[paste(chr,"start",sep=".")][areUni],
+     "stop"=probeAnno[paste(chr,"end",sep=".")][areUni],
+     "logR"=exprs(X)[probeAnno[paste(chr,"index",sep=".")][areUni],1])
+}))
+
+cmarrtRes <- cmarrt.ma(cmarrtDat, M=0.5, frag.length=900,
+                       window.opt = "fixed.gen.dist")
+
+cmarrtReg <- cmarrt.peak(cmarrtRes, alpha=0.05, method="BY", minrun=4) 
+cmarrtRegDf <- lapply(cmarrtReg, as.data.frame)$cmarrt.bound
+names(cmarrtRegDf)[1:3] <- c("chr","start","end")
+@ 
+%
+These are a few of the ChIP-enriched regions for H3K4me3 in brain cells,
+as identified by \Rpackage{CMARRT}:
+%
+<<showCmarrt>>=
+head(cmarrtRegDf)
+@ 
+%
+We assess the overlap between ChIP-enriched regions identified by the
+two methods, exemplarily for chromosome 9.
+%
+<<getRingoAndCmarrt>>=
+ringoChersChr9 <- subset(chersXD, chr=="9" & cellType=="brain")
+cmarrtChersChr9 <- subset(cmarrtRegDf, chr=="9")
+dim(ringoChersChr9)
+dim(cmarrtChersChr9)
+@
+%
+The overlap between two ChIP-enriched regions
+$R_{i, \mbox{\scriptsize \Rpackage{Ringo}}}$ and
+$R_{j, \mbox{\scriptsize \Rpackage{CMARRT}}}$, which were identified
+by \Rpackage{Ringo} and \Rpackage{CMARRT}, respectively,
+is computed as
+\begin{equation}
+\textup{Ov}\left(R_{i, \mbox{\scriptsize \Rpackage{Ringo}}},
+ R_{j, \mbox{\scriptsize \Rpackage{CMARRT}}} \right) =  \frac{%
+\textnormal{length}\left( R_{i, \mbox{\scriptsize \Rpackage{Ringo}}}
+\cap R_{j, \mbox{\scriptsize \Rpackage{CMARRT}}} \right)}{%
+\min \left( \textnormal{length}(R_{i, h_1}),
+\textnormal{length}(R_{j, h_2}) \right)}
+\end{equation}
+where ``$\cap$'' denotes region intersection and
+$\textnormal{length}(R_i)$ is the length of region $R_i$ in
+nucleotides.
+
+<<overlapRingoVsCmarrt, cache=TRUE>>=
+chersChr9Overlap <- as.matrix(
+   regionOverlap(ringoChersChr9, cmarrtChersChr9))
+minRegChr9Len <- outer(with(ringoChersChr9, end-start+1), 
+                       with(cmarrtChersChr9, end-start+1), pmin)
+fracChr9Overlap <- chersChr9Overlap /minRegChr9Len
+@ 
+<<showOverlapRingoVsCmarrt>>=
+summary(apply(fracChr9Overlap, 1, max))
+@ 
+One average, a ChIP-enriched region identified by \Rpackage{Ringo} is
+overlapped to $\approx 91\%$ by a ChIP-enriched region identified by
+\Rpackage{CMARRT}. The identified regions are highly consistent
+between the two methods.
 
 
 \section{Comparing ChIP-enrichment between the tissues}
@@ -585,11 +902,16 @@ heartOnlyGenes <- setdiff(heartGenes, brainGenes)
 @ 
 
 <<useTopGO, echo=FALSE, results=hide>>=
-sigGOTable <- function(selGenes, GOgenes=arrayGenesWithGO, gene2GO=mm9.gene2GO[arrayGenesWithGO], ontology="BP", maxP=0.001){
+sigGOTable <- function(selGenes, GOgenes=arrayGenesWithGO, 
+                       gene2GO=mm9.gene2GO[arrayGenesWithGO],
+                       ontology="BP", maxP=0.001)
+{
   inGenes <- factor(as.integer(GOgenes %in% selGenes))
   names(inGenes) <- GOgenes
-  GOdata <- new("topGOdata", ontology=ontology, allGenes=inGenes, annot=annFUN.gene2GO, gene2GO=gene2GO)
-  myTestStat <- new("elimCount", testStatistic=GOFisherTest, name="Fisher test", cutOff=maxP)
+  GOdata <- new("topGOdata", ontology=ontology, allGenes=inGenes,
+                annot=annFUN.gene2GO, gene2GO=gene2GO)
+  myTestStat <- new("elimCount", testStatistic=GOFisherTest,
+                    name="Fisher test", cutOff=maxP)
   mySigGroups <- getSigGroups(GOdata, myTestStat)
   sTab <- GenTable(GOdata, mySigGroups, topNodes=length(usedGO(GOdata)))
   names(sTab)[length(sTab)] <- "p.value"
@@ -607,9 +929,14 @@ heartRes <- sigGOTable(heartOnlyGenes)
 
 We compute the base-pair overlap between enriched regions found in brain cells
 with those found in heart cells. 
-We define that region $A$ is said to \emph{overlap} with region $B$ if 
-$$ length(A \cap B)~~\geq~~0.7 \cdot \min(length(A),length(B)) $$
-where $length(X)$ denotes the length of region $X$ in nucleotides.
+We define that region $R_i$ is defined to \emph{overlap} with region
+$R_j$ if
+\begin{equation}
+\textnormal{length}(R_i \cap R_j)~~\geq~~0.7 \cdot
+\min(\textnormal{length}(R_i),\textnormal{length}(R_j))
+\end{equation}
+where $\textnormal{length}(R_i)$ denotes the length of region $R_i$ in
+nucleotides.
 We define an enriched region as tissue-specific if it does not overlap
 with any region from another tissue according to the definition above.
 
@@ -617,15 +944,18 @@ with any region from another tissue according to the definition above.
 brainRegions <- subset(chersXD, cellType=="brain")
 heartRegions <- subset(chersXD, cellType=="heart")
 chersOBL <- as.matrix(regionOverlap(brainRegions, heartRegions))
-minRegLen <- outer(with(brainRegions, end-start+1), with(heartRegions, end-start+1), pmin)
+minRegLen <- outer(with(brainRegions, end-start+1),
+                   with(heartRegions, end-start+1), pmin)
 fracOverlap <- chersOBL/minRegLen
 @ 
 %
 <<compTissueSpecificRegions>>=
 brainSpecReg <-  brainRegions[rowMax(fracOverlap)<0.7,]
 heartSpecReg <-  heartRegions[rowMax(t(fracOverlap))<0.7,]
-mean(is.element(unlist(strsplit(brainSpecReg$features, split="[[:space:]]"), use.names=FALSE), brainOnlyGenes))
-selGenes <- intersect(unlist(strsplit(brainSpecReg$features, split="[[:space:]]"), use.names=FALSE), heartGenes)
+mean(is.element(unlist(strsplit(brainSpecReg$features, 
+   split="[[:space:]]"), use.names=FALSE), brainOnlyGenes))
+selGenes <- intersect(unlist(strsplit(brainSpecReg$features, 
+   split="[[:space:]]"), use.names=FALSE), heartGenes)
 @
 %
 Note that only
@@ -669,10 +999,12 @@ load(file="selGenesVal.RData")
 %
 <<getDataQuantilesOfSelGenesVal>>=
 quants <- c(0.1,0.3,0.5,0.7, 0.9)
-valsBySample <- lapply(list("H3K4me3.brain.smoothed","H3K4me3.heart.smoothed"), function(thisSample){
-  do.call("cbind", lapply(selGenesVal, function(theseValues){
-    return(theseValues[,thisSample,drop=FALSE])}))})
-names(valsBySample) <- c("H3K4me3.brain.smoothed","H3K4me3.heart.smoothed")
+valsBySample <- lapply(list("H3K4me3.brain.smoothed",
+   "H3K4me3.heart.smoothed"), function(thisSample){
+      do.call("cbind", lapply(selGenesVal, function(theseValues){
+      return(theseValues[,thisSample,drop=FALSE])}))})
+names(valsBySample) <- c("H3K4me3.brain.smoothed",
+                         "H3K4me3.heart.smoothed")
 quantsBySample <- lapply(valsBySample, function(theseValues)
   apply(theseValues, 1, quantile, probs=quants, na.rm=TRUE))
 @ 
@@ -682,40 +1014,33 @@ positions by the densities of mapped reporters.
 %
 <<getProbePosDensity>>=
 probePosDens <- density(unlist(mm9.g2p, use.names=FALSE))
-probePosY <- approx(x=probePosDens$x, y=probePosDens$y, xout=targetPos)$y
+probePosY <- approx(x=probePosDens$x, y=probePosDens$y, 
+                    xout=targetPos)$y
 probePosY <- probePosY/max(probePosY)
 @ 
 %
-<<plotQuantsBySample, eval=FALSE>>=
-plot(x=0,y=0, ylim=c(-0.2,3.5), xaxt="n", xlim=range(targetPos), type="n", xlab="Distance to gene start [bp]", ylab="smoothed intensity")
-axis(side=1, at=seq(-5000, 10000, by=1000), labels=paste(-5:10,"kb",sep=""))
+<<sepRegGenesSmoothedQuantiles, fig=TRUE, include=FALSE, width=8, height=5, dens=TRUE, results=hide, keep.source=TRUE>>=
+plot(x=0,y=0, ylim=c(-0.2,3.5), xlim=range(targetPos),
+     xaxt="n", type="n", xlab="Distance to gene start [bp]",
+     ylab="smoothed fold-change")
+axis(side=1, at=seq(-5000, 10000, by=1000),
+     labels=paste(-5:10,"kb",sep=""))
 mycolors <- c("green","orange")
 for (i in 1:2){
-  lines(x=targetPos,y=quantsBySample[[i]][3,]*probePosY, lwd=2, col=mycolors[i])
-  lines(x=targetPos,y=quantsBySample[[i]][5,]*probePosY, lwd=2, lty=2, col=mycolors[i])
+  lines(x=targetPos,y=quantsBySample[[i]][3,]*probePosY, 
+        lwd=2, col=mycolors[i])
+  lines(x=targetPos,y=quantsBySample[[i]][5,]*probePosY, 
+        lwd=2, lty=2, col=mycolors[i])
 }
-legend(x="topleft", fill=c("green","orange"), legend=c("H3K4me3 brain", "H3K4me3 heart"), bty="n")
-legend(x="topright", lty=c(2,1), lwd=2, legend=c("90% quantile", "median"), bty="n")
-@ 
-<<sepRegGenesSmoothedQuantiles, echo=FALSE, results=hide>>=
-## evaluate this chunk instead of previous one for a prettier figure
-pdf(file="ccTutorial-sepRegGenesSmoothedQuantiles.pdf", width=8, height=5)
-par(mar=c(4,4,1,1), font.lab=2)
-plot(x=0,y=0, ylim=c(-0.2,3.5), xlim=range(targetPos), xaxt="n", type="n", xlab="Distance to gene start [bp]", ylab="smoothed fold-change")
-axis(side=1, at=seq(-5000, 10000, by=1000), labels=paste(-5:10,"kb",sep=""))
-mycolors <- c("green","orange")
-for (i in 1:2){
-  lines(x=targetPos,y=quantsBySample[[i]][3,]*probePosY, lwd=2, col=mycolors[i])
-  lines(x=targetPos,y=quantsBySample[[i]][5,]*probePosY, lwd=2, lty=2, col=mycolors[i])
-}
-legend(x="topleft", fill=c("green","orange"), legend=c("H3K4me3 brain", "H3K4me3 heart"), bty="n")
-legend(x="topright", lty=c(2,1), lwd=2, legend=c("90% quantile", "median"), bty="n")
-dev.off()
+legend(x="topleft", fill=c("green","orange"), bty="n", 
+       legend=c("H3K4me3 brain", "H3K4me3 heart"))
+legend(x="topright", lty=c(2,1), lwd=2, bty="n",
+       legend=c("90% quantile", "median"))
 @ 
 %
-\myincfig{ccTutorial-sepRegGenesSmoothedQuantiles}{0.9\textwidth}{Densities of selected quantiles of the smoothed fold-changes for H3K4me3 ChIP in \emph{M. musculus} brain and heart cells for genes that show H3K4me3 enriched regions in both tissues but in separate positions.}
+\myincfig{ccTutorialSupplement-sepRegGenesSmoothedQuantiles}{0.85\textwidth}{Densities of selected quantiles of the smoothed fold-changes for H3K4me3 ChIP in \emph{M. musculus} brain and heart cells for genes that show H3K4me3 enriched regions in both tissues but in separate positions.}
 %
-See Figure \ref{ccTutorial-sepRegGenesSmoothedQuantiles} for the densities.
+See Figure \ref{ccTutorialSupplement-sepRegGenesSmoothedQuantiles} for the densities.
 There are no clear tissue-wise trends where these enriched regions are in
 relation to the gene start coordinate. In both tissues, the smoothed
 intensities on average are highest within 1kb after the gene start
@@ -738,43 +1063,36 @@ See the results in Table \ref{tab-sepRegResGO}.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{ChIP results and expression microarray data}
 
-%We compare the ChIP-chip results with publically available expression
-%microarray data for the two tissues from the
-%Novartis \emph{Symatlas} data set \cite{Su2002}. 
-Barrera et al. \cite{Barrera2008} also provide expression microarray data
-for five their analyzed \emph{M. musculus} tissues. 
+Barrera~\textit{et\,al.}~\cite{Barrera2008} also provide expression
+microarray data for five their analyzed \emph{M. musculus} tissues.
 
 \subsection{Preprocess the microarray expression data}
 
-\begin{comment}
-The data were obtained from the Gene Expression Omnibus (accession GSE97).
-We downloaded two files, the Series Matrix File 
-\texttt{GSE97\_series\_matrix.txt.gz}, which holds the sample and tissue
-annotation, and the raw data
-file \texttt{GSE97\_RAW.tar}, which holds the actual raw data files
-in the Affymetrix CEL format. Upon download, we uncompressed both files.
-\end{comment}
-The data were obtained from the publication's supplementary web page
-and were then imported into R and preprocessed as follows
-
+The data were obtained from the supplementary web page
+to the publication~\cite{Barrera2008},
+imported into R and preprocessed as follows.
+%
 <<processSymatlasData, eval=FALSE, echo=FALSE>>=
 library("affy")
 library("mgu74acdf")
 library("mgu74aprobe")
 sm <- readLines("GSE97_series_matrix.txt")
-sampleTissues <- gsub("\"","",strsplit(sm[grep("\\!Sample_source_name_ch1",sm)],split="\t")[[1]][-1])
-sampleAccession <- gsub("\"","",strsplit(sm[grep("\\!Sample_geo_accession",sm)],split="\t")[[1]][-1])
+sampleTissues <- gsub("\"","", strsplit(sm[
+   grep("\\!Sample_source_name_ch1",sm)],split="\t")[[1]][-1])
+sampleAccession <- gsub("\"","",strsplit(sm[
+   grep("\\!Sample_geo_accession",sm)],split="\t")[[1]][-1])
 AB <- ReadAffy(filenames=list.files(pattern=".*CEL.gz"), compress=TRUE)
 symatlasX <- mas5(AB)
 sampleNames(symatlasX) <- gsub("\\.CEL\\.gz$","",sampleNames(symatlasX))
-symatlasX$Tissue <- sampleTissues[match(sampleNames(symatlasX), sampleAccession)]
-# save(symatlasX, file="symatlasX_mas5.RData")
+symatlasX$Tissue <- sampleTissues[match(sampleNames(symatlasX),
+                                        sampleAccession)]
 @ 
-
+%
 <<processBarerraExpressionData, eval=FALSE, keep.source=TRUE>>=
 library("affy")
 library("mouse4302cdf")
-AB <- ReadAffy(celfile.path=system.file("expression", package="ccTutorial"))
+AB <- ReadAffy(celfile.path=system.file("expression", 
+                                        package="ccTutorial"))
 barreraExpressionX <- mas5(AB)
 barreraExpressionX$Tissue <- sapply(
    strsplit(sampleNames(barreraExpressionX),split="\\."),"[",3)
@@ -790,20 +1108,26 @@ data("barreraExpressionX")
 
 \subsection{Map Ensembl identifier to Affymetrix probe sets}
 
-The expression data was generated using the \texttt{Mouse\_430\_2}
+The expression data were generated using the \texttt{Mouse\_430\_2}
 oligonucleotide microarray platform from Affymetrix.
 Using biomaRt, we create a mapping of Ensembl gene identifiers
 to the probe set identifiers on that microarray design.
 % new one for author-provided expression data:
-<<mapEnsToAffy, keep.source=TRUE>>=
+<<mapEnsToAffy, keep.source=TRUE, eval=FALSE>>=
 ensembl <- useMart("ensembl", dataset="mmusculus_gene_ensembl")
 bmRes <- getBM(attributes=c("ensembl_gene_id","affy_mouse430_2"), 
-               filters="ensembl_gene_id", value=arrayGenes, mart=ensembl)
+               filters="ensembl_gene_id", value=arrayGenes, 
+               mart=ensembl)
 bmRes <- subset(bmRes, nchar(affy_mouse430_2)>0)
-arrayGenesToProbeSets <- split(bmRes$"affy_mouse430_2", 
-                               bmRes$"ensembl_gene_id")
+arrayGenesToProbeSets <- split(bmRes[["affy_mouse430_2"]], 
+                               bmRes[["ensembl_gene_id"]])
+@ 
+%
+<<loadArrayGenes, echo=FALSE>>=
+data("arrayGenesToProbeSets")
 @ 
 How many probe sets are mapped to each gene?
+%
 <<lookArrayGenesToProbeSets>>=
 table(listLen(arrayGenesToProbeSets))
 @ 
@@ -813,14 +1137,14 @@ table(listLen(arrayGenesToProbeSets))
 \section*{Software versions}
 
 This supplement was generated using the following package versions:
-
+%
 <<sessionInfo, echo=FALSE, results=tex>>=
 toLatex(sessionInfo())
 @
 
 \small
 \section*{Acknowledgments}
-
+%
 This work was supported by the
 European Union (FP6 HeartRepair, LSHM-CT-2005-018630).
 
