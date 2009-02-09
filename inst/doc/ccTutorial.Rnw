@@ -57,7 +57,7 @@ raiselinks,plainpages,pdftex]{hyperref}
 %%%%%%% START EDITING HERE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-\SweaveOpts{eps=false,include=FALSE,keep.source=TRUE} 
+\SweaveOpts{eps=false,include=FALSE,keep.source=TRUE}
 
 \title{Analyzing ChIP-chip data using Bioconductor}
 \author{Joern Toedling, Wolfgang Huber}
@@ -69,8 +69,7 @@ set.seed(1)
 @ 
 
 This is only a placeholder. The real vignette has been
-pre-created since it takes quite some time to process
-it.
+pre-created since it takes quite some time to process.
 
 \section*{Software versions}
 

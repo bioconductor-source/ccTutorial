@@ -1,5 +1,5 @@
 %\VignetteIndexEntry{Supplement to A tutorial on how to analyze ChIP-chip readouts using Bioconductor}
-%\VignetteDepends{weaver, Ringo, biomaRt, topGO}
+%\VignetteDepends{weaver, Ringo, biomaRt, topGO, xtable}
 %\VignetteKeywords{microarray ChIP-chip NimbleGen nimblegen}
 %\VignettePackage{ccTutorial} % name of package
 
@@ -123,6 +123,7 @@ options(SweaveHooks=list(along=function() par(mar=c(2.5,4.2,4,1.5), font.lab=2),
 library("Ringo")
 library("biomaRt")
 library("topGO")
+library("xtable")
 library("ccTutorial")
 @ 
 
@@ -273,7 +274,7 @@ For the data of Barrera~\textit{et~al.}~\cite{Barrera2008}, we
 construct one picture showing the spatial distributions for all arrays
 and both channels.
 
-<<imageRG,eval=FALSE,results=hide,echo=TRUE>>=
+<<imageRG, eval=TRUE, results=hide,echo=TRUE>>=
 RG1breaks <- c(0,quantile(RGs[[1]]$G, probs=seq(0,1,by=0.1)),2^16)
 jpeg("ccTutorialArrayImages.jpg", quality=100,
      height=1074*1.5, width=768*1.5)
@@ -492,7 +493,7 @@ Using the Bioconductor package \Rpackage{biomaRt} \cite{Durinck2005},
 we can obtain an up-to-date annotation of the mouse genome
 from the Ensembl data base \cite{Birney2004}.
 
-<<makeGffWithBiomaRt, eval=FALSE>>=
+<<makeGffWithBiomaRt, cache=TRUE, eval=TRUE>>=
 ensembl  <- useMart("ensembl", dataset="mmusculus_gene_ensembl")
 gene.ids <- unique(unlist(lapply(as.list(c(1:19,"X","Y")), 
    function(this.chr) 
@@ -507,10 +508,10 @@ mm9genes <- getBM(attributes=sel.attributes, filters="ensembl_gene_id",
 For later use, we replace the formal element names retrieved
 from the data base by simpler ones.
 %
-<<replaceMm9GenesNames, eval=FALSE>>=
+<<replaceMm9GenesNames, eval=TRUE>>=
 mm9genes$name    <- mm9genes$"ensembl_gene_id"
 mm9genes$gene    <- mm9genes$"ensembl_gene_id"
-mm9genes$chr     <- mm9genes$chromosome_name
+mm9genes$chr     <- mm9genes$"chromosome_name"
 mm9genes$symbol  <- mm9genes$"mgi_symbol"
 mm9genes$start   <- mm9genes$"start_position"
 mm9genes$end     <- mm9genes$"end_position"
@@ -522,7 +523,7 @@ more than one MGI Symbol defined for it. We keep allow only one row in the
 table per gene and append additional MGI symbols to the \emph{description}
 element of each gene.
 %
-<<removeDuplicatedSymbols, eval=FALSE>>=
+<<removeDuplicatedSymbols, eval=TRUE>>=
 if (any(duplicated(mm9genes$name))){
   dupl <- unique(mm9genes$name[duplicated(mm9genes$name)])
   G <- lapply(as.list(dupl), function(this.gene){
@@ -532,7 +533,7 @@ if (any(duplicated(mm9genes$name))){
     non.zero.gff <- subset(this.gff, nchar(symbol)>0)
     this.other.sym <- NULL
     if (nrow(non.zero.gff)> 0){
-      shortest <- which.min(nchar(non.zerogff$symbol))
+      shortest <- which.min(nchar(non.zero.gff$symbol))
       this.new.sym <- non.zero.gff$symbol[shortest]
       if (nrow(non.zero.gff)>1)
         this.other.sym <- paste("Synonyms", 
@@ -550,13 +551,13 @@ if (any(duplicated(mm9genes$name))){
 @ 
 %
 Finally, we reorder the table rows by gene chromosome and start position.
-<<reorderMm9, eval=FALSE>>=
+<<reorderMm9, eval=TRUE>>=
 mm9genes <- mm9genes[order(mm9genes$chr, mm9genes$start),
   c("name","chr","strand","start","end","symbol","description","feature")]
 rownames(mm9genes) <- NULL
 @ 
-%
-<<loadMM9Genes, echo=FALSE>>=
+% alternative:
+<<loadMM9Genes, eval=FALSE, echo=FALSE>>=
 data(mm9genes)
 @ 
 %
@@ -580,7 +581,7 @@ that have only been
 are based on a \emph{non-traceable author statement} (NAS) 
 or for which there is \emph{no biological data} (ND) available.
 %
-<<getGenesGOAnnotation, eval=FALSE>>=
+<<getGenesGOAnnotation, cache=TRUE, eval=TRUE>>=
 ensembl  <- useMart("ensembl", dataset="mmusculus_gene_ensembl")
 ontoGOs <- lapply(as.list(c("biological_process","cellular_component", 
                   "molecular_function")), function(onto){
@@ -601,10 +602,10 @@ mm9GO <- getBM(attributes=c("ensembl_gene_id","go","evidence_code"),
 mm9GO <- subset(mm9GO, !( evidence_code %in% c("", "IEA","NAS","ND")))
 @ 
 
-<<getGOperGene, eval=FALSE>>=
+<<getGOperGene, eval=TRUE, cache=TRUE>>=
 mm9.gene2GO <- with(mm9GO, split(go, ensembl_gene_id))
 @ 
-<<loadGenesGOAnnotation, echo=FALSE>>=
+<<loadGenesGOAnnotation, eval=FALSE, echo=FALSE>>=
 data(mm9.gene2GO)
 data(mm9.g2p)
 @
@@ -612,7 +613,7 @@ data(mm9.g2p)
 Finally, we create a mapping of gene identifiers to reporters that
 had been mapped into the gene or its upstream region.
 %
-<<mappingGenesToProbes, eval=FALSE, cache=TRUE, results=hide>>=
+<<mappingGenesToProbes, eval=TRUE, cache=TRUE, results=hide>>=
 mm9.g2p <- features2Probes(gff=mm9genes, probeAnno=probeAnno)
 @ 
 %
@@ -631,7 +632,7 @@ of reporters mapped to their upstream region or inside of them.
 We also determine which of these genes have been annotated with at
 least one GO term.
 %
-<<arrayGenes>>=
+<<arrayGenes, cache=TRUE>>=
 arrayGenes <- names(mm9.g2p)[listLen(mm9.g2p)>=5]
 arrayGenesWithGO <- intersect(arrayGenes, names(mm9.gene2GO))
 @ 
@@ -1054,7 +1055,7 @@ for over-represented GO annotations.
 sepRegRes <- sigGOTable(selGenes=selGenes)
 print(sepRegRes)
 @ 
-<<printBrainRes, echo=FALSE, results=tex>>=
+<<printSepRegRes, eval=TRUE, echo=FALSE, results=tex>>=
 print(xtable(sepRegRes, label="tab-sepRegResGO", caption="\\sl GO terms that are significantly over-represented among genes that show different H3K4me3 regions in heart and brain cells"), type="latex", table.placement="htb", size="scriptsize", include.rownames=FALSE)
 @ 
 %
@@ -1072,23 +1073,7 @@ The data were obtained from the supplementary web page
 to the publication~\cite{Barrera2008},
 imported into R and preprocessed as follows.
 %
-<<processSymatlasData, eval=FALSE, echo=FALSE>>=
-library("affy")
-library("mgu74acdf")
-library("mgu74aprobe")
-sm <- readLines("GSE97_series_matrix.txt")
-sampleTissues <- gsub("\"","", strsplit(sm[
-   grep("\\!Sample_source_name_ch1",sm)],split="\t")[[1]][-1])
-sampleAccession <- gsub("\"","",strsplit(sm[
-   grep("\\!Sample_geo_accession",sm)],split="\t")[[1]][-1])
-AB <- ReadAffy(filenames=list.files(pattern=".*CEL.gz"), compress=TRUE)
-symatlasX <- mas5(AB)
-sampleNames(symatlasX) <- gsub("\\.CEL\\.gz$","",sampleNames(symatlasX))
-symatlasX$Tissue <- sampleTissues[match(sampleNames(symatlasX),
-                                        sampleAccession)]
-@ 
-%
-<<processBarerraExpressionData, eval=FALSE, keep.source=TRUE>>=
+<<processBarerraExpressionData, eval=TRUE, cache=TRUE, keep.source=TRUE, results=hide>>=
 library("affy")
 library("mouse4302cdf")
 AB <- ReadAffy(celfile.path=system.file("expression", 
@@ -1097,11 +1082,7 @@ barreraExpressionX <- mas5(AB)
 barreraExpressionX$Tissue <- sapply(
    strsplit(sampleNames(barreraExpressionX),split="\\."),"[",3)
 @ 
-<<saveBarerraExpressionX, echo=FALSE, eval=FALSE>>=
-save(barreraExpressionX, file=file.path(system.file("expression", 
-          package="ccTutorial"), "barreraExpressionX_mas5.RData"))
-@ 
-<<loadExpressionData, echo=FALSE>>=
+<<loadExpressionData, eval=FALSE, echo=FALSE>>=
 ## to speed up creation of the vignette, we load the saved result of the above code chunks
 data("barreraExpressionX")
 @ 
@@ -1113,7 +1094,7 @@ oligonucleotide microarray platform from Affymetrix.
 Using biomaRt, we create a mapping of Ensembl gene identifiers
 to the probe set identifiers on that microarray design.
 % new one for author-provided expression data:
-<<mapEnsToAffy, keep.source=TRUE, eval=FALSE>>=
+<<mapEnsToAffy, keep.source=TRUE, eval=TRUE, cache=TRUE>>=
 ensembl <- useMart("ensembl", dataset="mmusculus_gene_ensembl")
 bmRes <- getBM(attributes=c("ensembl_gene_id","affy_mouse430_2"), 
                filters="ensembl_gene_id", value=arrayGenes, 
@@ -1122,8 +1103,8 @@ bmRes <- subset(bmRes, nchar(affy_mouse430_2)>0)
 arrayGenesToProbeSets <- split(bmRes[["affy_mouse430_2"]], 
                                bmRes[["ensembl_gene_id"]])
 @ 
-%
-<<loadArrayGenes, echo=FALSE>>=
+% alternatively:
+<<loadArrayGenes, eval=FALSE, echo=FALSE>>=
 data("arrayGenesToProbeSets")
 @ 
 How many probe sets are mapped to each gene?
