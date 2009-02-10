@@ -1,4 +1,4 @@
-all: tex1 tex2 copycat clean
+all: tex1 tex2 copycat code clean
 
 tex1: ccTutorial.tex
 	pdflatex ccTutorial
@@ -19,7 +19,6 @@ code:	header.tex
 	cat header.tex ccTutorialSupplement.R footer.tex > codeSupplement.tex
 	pdflatex codeTutorial.tex
 	pdflatex codeSupplement.tex
-	make clean
 
 clean:
 	rm -f *.out *.bbl *.log *.aux *.blg *.brf *.toc
