@@ -21,7 +21,7 @@ raiselinks,plainpages,pdftex]{hyperref}
 
 \usepackage{amsmath, graphicx}
 \usepackage[compress]{natbib}
-\bibpunct{[}{]}{,}{n}{}{,} 
+\bibpunct{[}{]}{,}{n}{}{,}
 
 \parindent0mm
 \parskip2ex plus0.5ex minus0.3ex
@@ -38,7 +38,7 @@ raiselinks,plainpages,pdftex]{hyperref}
 \newcommand{\myincfig}[3]{%
 \begin{figure}[h!tb]
 \begin{center}
-%\includegraphics[width=#2]{#1} % uncomment this for testing prior to submission
+\includegraphics[width=#2]{#1} % uncomment this for testing prior to submission
 \caption{\label{#1}\textit{#3}}
 \end{center}
 \end{figure}
@@ -61,7 +61,7 @@ raiselinks,plainpages,pdftex]{hyperref}
 {\renewcommand\thefootnote{\fnsymbol{footnote}}
 \title{Analyzing ChIP-chip Data Using Bioconductor}
 \author{Joern Toedling\,$^\star$,
-Wolfgang Huber\\[0.5cm] 
+Wolfgang Huber\\[0.5cm]
 {\small EMBL European Bioinformatics Institute,
 Wellcome Trust Genome Campus},\\[0.01cm]
 {\small Hinxton, United Kingdom}\\[0.8cm]
@@ -71,14 +71,13 @@ Wellcome Trust Genome Campus},\\[0.01cm]
 }
 \addtocounter{footnote}{-1}
 
-
 <<prepare, echo=FALSE, results=hide>>=
 options(length=55, digits=3)
-options(SweaveHooks=list(along=function() par(mar=c(2.5,4.2,4,1.5), font.lab=2),
-                         boxplot=function() par(mar=c(5,5,1,1), font.lab=2)))
+options(SweaveHooks=list(
+   along=function() par(mar=c(2.5,4.2,4,1.5), font.lab=2),
+   boxplot=function() par(mar=c(5,5,1,1), font.lab=2)))
 set.seed(1)
-@ 
-
+@
 
 \section*{Introduction}
 
@@ -100,16 +99,16 @@ from other ChIP-chip or (m)RNA abundance microarray experiments.
 Both tasks rely heavily on visualization, which helps to
 explore the data as well as to present the analysis results.  For the
 primary statistical analysis, some standardization is
-possible and desirable: 
-commonly used experimental designs and microarray platforms 
+possible and desirable:
+commonly used experimental designs and microarray platforms
 allow the development of relatively standard workflows
-and statistical procedures. 
+and statistical procedures.
 Most software available for ChIP-chip data analysis can be employed
-in such standardized 
+in such standardized
 approaches~\cite{Buck2005,Ji2005,JohnsonMAT2006, Keles2007,
 Ringo2007, Zheng2007}.
 Yet even for primary analysis steps,
-it may be beneficial to adapt them to specific experiments, 
+it may be beneficial to adapt them to specific experiments,
 and hence it is desirable that software offers flexibility
 in the choice of algorithms for normalization, visualization and
 identification of enriched regions.
@@ -134,8 +133,7 @@ progress in biology and computational statistics is that using its
 tools can be daunting for a new user.
 %% Change1: added citation of general introductory books for R and BioC
 Various books provide a good general introduction to R and
-\mbox{Bioconductor} (e.g.,
-\cite{Gentleman2008,biocbook2005, biocbook2008})
+\mbox{Bioconductor}~(e.g.,~\cite{Gentleman2008,biocbook2005,biocbook2008})
 and most Bioconductor packages are accompanied by extensive
 documentation.
 This tutorial covers basic ChIP-chip data analysis with Bioconductor.
@@ -158,7 +156,8 @@ library("biomaRt")
 library("topGO")
 library("xtable")
 library("ccTutorial")
-@ 
+library("lattice")
+@
 %
 \phead{Terminology.}
 \emph{Reporters} are the DNA sequences fixed to the microarray; they
@@ -285,12 +284,7 @@ the mapping of reporters to the genome is stored in a
 \Rclass{probeAnno} class object.
 Text~S1 contains details on its construction.
 %
-<<posToProbeAnno, echo=FALSE, cache=TRUE, results=hide>>=
-probeAnno <- posToProbeAnno(file.path(system.file("exonerateData",
-  package="ccTutorial"), "allChromExonerateOut.txt"))
-allChrs <- chromosomeNames(probeAnno)
-@ 
-<<loadProbeAnno, eval=FALSE>>=
+<<loadProbeAnno, eval=TRUE>>=
 data("probeAnno")
 allChrs <- chromosomeNames(probeAnno)
 @ 
@@ -407,7 +401,7 @@ We visualize the preprocessed H3K4me3 ChIP-chip reporter levels around
 the start of the \textsl{Actc1} gene, which encodes the cardiac actin
 protein.
 %
-<<chipAlongChromActc1, eval=FALSE, fig=FALSE, width=8, height=4, along=FALSE, results=hide>>=
+<<chipAlongChromActc1, eval=TRUE, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
 chipAlongChrom(X, chrom="2", xlim=c(113.8725e6,113.8835e6), ylim=c(-3,5),
                probeAnno=probeAnno, gff=mm9genes, paletteName='Set2')
 @ 
@@ -453,7 +447,7 @@ sampleNames(smoothX) <- paste(sampleNames(X),"smoothed",sep=".")
 Compare the smoothed reporter intensities with the original ones around the
 start of the gene \emph{Actc1}.
 %
-<<smoothAlongChromActc1, eval=FALSE, fig=FALSE, width=8, height=4, along=FALSE, results=hide>>=
+<<smoothAlongChromActc1, eval=TRUE, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
 chipAlongChrom(X, chrom="2", xlim=c(113.8725e6,113.8835e6), ylim=c(-3,5),
                probeAnno=probeAnno, gff=mm9genes, paletteName='Set2')
 chipAlongChrom(smoothX, chrom="2", xlim=c(113.8725e6,113.8835e6), ilwd=4,
@@ -533,7 +527,7 @@ as visualized in Figure~\ref{ccTutorial-histogramsSmoothed}.
 y0 <- apply(exprs(smoothX), 2, upperBoundNull, prob=0.99)
 @
 %
-<<histogramsSmoothed, eval=FALSE, fig=FALSE, width=7, height=7>>=
+<<histogramsSmoothed, eval=TRUE, fig=TRUE, include=FALSE, width=7, height=7>>=
 myPanelHistogram <- function(x, ...){
   panel.histogram(x, col=brewer.pal(8,"Dark2")[panel.number()], ...)
   panel.abline(v=y0[panel.number()], col="red")
@@ -602,7 +596,7 @@ We are now ready to identify H3K4me3 ChIP-enriched regions in the
 data. We set $n_{\mbox{\scriptsize min}}=5$ and
 $d_{\mbox{\scriptsize max}}=450$.
 
-<<cherFinding, eval=FALSE>>=
+<<cherFinding, eval=TRUE, results=hide, cache=TRUE>>=
 chersX <- findChersOnSmoothed(smoothX, 
    probeAnno = probeAnno, 
    thresholds = y0, 
@@ -618,11 +612,11 @@ An enriched region is regarded as \emph{related} to a gene if its
 center position is located less than 5~kb upstream of a gene's start
 coordinate or between a gene's start and end coordinates.
 %
-<<relateChers, eval=FALSE>>=
+<<relateChers, eval=TRUE, results=hide>>=
 chersX <- relateChers(chersX, mm9genes, upstream=5000)
 @
 %
-<<loadCherFinding, echo=FALSE>>=
+<<loadCherFinding, eval=FALSE, echo=FALSE>>=
 # since especially the call to relateChers takes some time, we load the
 ## pre-saved image here:
 data("chersX")
@@ -645,7 +639,7 @@ See the result in Table~\ref{tab-chersXD}.
 We visualize the intensities around the region with the highest
 smoothed level.
 %
-<<plotCher1, eval=FALSE, fig=FALSE, width=8, height=4, along=FALSE, results=hide>>=
+<<plotCher1, eval=TRUE, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
 plot(chersX[[which.max(chersXD$maxLevel)]], smoothX, probeAnno=probeAnno, 
      gff=mm9genes, paletteName="Dark2", ylim=c(-1,6))
 @ 
@@ -668,7 +662,7 @@ Brain cells show a higher number of H3K4me3-enriched regions than
 heart cells. Which genes show tissue-specific association to
 H3K4me3 ChIP-enriched regions?
 %
-<<getGenesEnrichedPerTissue>>=
+<<getGenesEnrichedPerTissue, cache=TRUE>>=
 brainGenes <- getFeats(chersX[sapply(chersX, cellType)=="brain"])
 heartGenes <- getFeats(chersX[sapply(chersX, cellType)=="heart"])
 brainOnlyGenes <- setdiff(brainGenes, heartGenes)
@@ -687,7 +681,7 @@ from the most specific GO nodes in a bottom-up approach. Genes that
 are used for evaluating a node are not used for evaluating any
 of its ancestor nodes \cite[\emph{elim} algorithm]{Alexa2006}. 
 
-<<useTopGO, results=hide>>=
+<<useTopGO, results=hide, cache=TRUE>>=
 sigGOTable <- function(selGenes, GOgenes=arrayGenesWithGO, 
  gene2GO=mm9.gene2GO[arrayGenesWithGO], ontology="BP", maxP=0.001)
 {
@@ -713,7 +707,7 @@ See the result GO terms in Table \ref{tab-brainResGO}.
 We perform the same analysis for genes showing heart-specific relation
 to  H3K4me3 enrichment.
 %
-<<useTopGOHeart, results=hide>>=
+<<useTopGOHeart, results=hide, cache=TRUE>>=
 heartRes <- sigGOTable(heartOnlyGenes)
 print(heartRes)
 @ 
@@ -782,7 +776,7 @@ brainExpression <- list(
 We use boxplots to compare the brain expression levels of genes with
 and without H3K4me3 enriched regions in brain/heart cells.
 %
-<<H3K4me3VsExpression, eval=FALSE, fig=FALSE, include=FALSE, width=9, height=7, boxplot=FALSE, results=hide>>=
+<<H3K4me3VsExpression, eval=TRUE, fig=TRUE, include=FALSE, width=9, height=7, boxplot=FALSE, results=hide>>=
 boxplot(brainExpression, col=c("#666666","#999966","#669966","#996666"), 
         names=NA, varwidth=TRUE, log="y", 
         ylab='gene expression level in brain cells')
@@ -790,7 +784,7 @@ mtext(side=1, at=1:length(brainExpression), padj=1, font=2,
       text=rep("H3K4me3",4), line=1)
 mtext(side=1, at=c(0.2, 1:length(brainExpression)), padj=1, font=2, 
       text=c("brain/heart","-/-","+/+","+/-","-/+"), line=2)
-@ 
+@
 
 %
 See the boxplots in Figure~\ref{ccTutorial-H3K4me3VsExpression}.
@@ -870,35 +864,45 @@ for making their ChIP-chip data publicly available.
 %%%% Tables and Figures in the end %%%%
 \clearpage
 \section*{Tables}
+<<remarkTables, eval=FALSE, echo=FALSE>>=
+# the purpose of the following chunks is merely to provide pretty
+# latex-formated output of the tables generated in the tutorial
+@
+%
 <<printMm9Genes, echo=FALSE, results=tex>>=
 print(xtable(mm9genes[sample(nrow(mm9genes), 4), 
    c("name", "chr", "strand", "start", "end", "symbol")],
-label="tab-mm9genes",
-caption="\\sl An excerpt of the object 'mm9genes'."),
-type="latex", table.placement="h!t", size="scriptsize",
-include.rownames=FALSE)
-@ 
+   label="tab-mm9genes",
+   caption="\\sl An excerpt of the object 'mm9genes'."),
+   type="latex", table.placement="h!t", size="scriptsize",
+   include.rownames=FALSE)
+@
 \vspace{1.5cm}
 %
 <<printChersXD, echo=FALSE, results=tex>>=
 print(xtable(head(chersXD[order(chersXD$maxLevel, decreasing=TRUE), 
-c("chr", "start", "end", "cellType", "features", "maxLevel", "score")]),
-label="tab-chersXD",
-caption="\\sl The first six lines of object 'chersXD'."),
-type="latex", table.placement="h!t", size="scriptsize",
-include.rownames=FALSE)
-@ 
+  c("chr", "start", "end", "cellType", "features", "maxLevel", "score")]),
+  label="tab-chersXD",
+  caption="\\sl The first six lines of object 'chersXD'."),
+  type="latex", table.placement="h!t", size="scriptsize",
+  include.rownames=FALSE)
+@
 %
 \vspace{1.5cm}
 <<printBrainRes, echo=FALSE, results=tex>>=
 ## for having prettier tables in the PDF, we use 'xtable' here:
-print(xtable(brainRes, label="tab-brainResGO", caption="\\sl GO terms that are significantly over-represented among genes showing H3K4me3 enrichment specifically in brain cells"), type="latex", table.placement="h!t", size="scriptsize", include.rownames=FALSE)
-@ 
+print(xtable(brainRes, label="tab-brainResGO", 
+   caption="\\sl GO terms that are significantly over-represented among genes showing H3K4me3 enrichment specifically in brain cells"),
+   type="latex", table.placement="h!t", size="scriptsize",
+   include.rownames=FALSE)
+@
 %
 \vspace{1.5cm}
 <<printHeartRes, echo=FALSE, results=tex>>=
-## for having prettier tables in the PDF, we use 'xtable' here:
-print(xtable(heartRes, label="tab-heartResGO", caption="\\sl GO terms that are significantly over-represented among genes showing H3K4me3 enrichment specifically in heart cells"), type="latex", table.placement="h!b", size="scriptsize", include.rownames=FALSE)
+print(xtable(heartRes, label="tab-heartResGO",
+   caption="\\sl GO terms that are significantly over-represented among genes showing H3K4me3 enrichment specifically in heart cells"),
+   type="latex", table.placement="h!b", size="scriptsize",
+   include.rownames=FALSE)
 @
 
 \clearpage

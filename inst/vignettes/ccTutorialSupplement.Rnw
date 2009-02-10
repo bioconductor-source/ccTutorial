@@ -114,10 +114,11 @@ can be found at
 <<prepare, echo=FALSE>>=
 options(length=60, "stringsAsFactors"=FALSE)
 set.seed(123)
-options(SweaveHooks=list(along=function() par(mar=c(2.5,4.2,4,1.5), font.lab=2),
-                         boxplot=function() par(mar=c(5,5,1,1), font.lab=4),
-                         dens=function() par(mar=c(4.1, 4.1, 0.1, 0.1), font.lab=2)))
-@ 
+options(SweaveHooks=list(
+   along=function() par(mar=c(2.5,4.2,4,1.5), font.lab=2),
+   boxplot=function() par(mar=c(5,5,1,1), font.lab=4),
+   dens=function() par(mar=c(4.1, 4.1, 0.1, 0.1), font.lab=2)))
+@
 
 <<loadpackage, results=hide>>=
 library("Ringo")
@@ -595,13 +596,6 @@ ontoGOs <- lapply(as.list(c("biological_process","cellular_component",
 mm9GO <- do.call("rbind", ontoGOs)
 @ 
 
-% old version, does not work with new Ensembl version:
-<<getGenesGOAnnotation, echo=FALSE, eval=FALSE>>=
-mm9GO <- getBM(attributes=c("ensembl_gene_id","go","evidence_code"), 
-          filters="ensembl_gene_id", value=mm9genes$name, mart=ensembl)
-mm9GO <- subset(mm9GO, !( evidence_code %in% c("", "IEA","NAS","ND")))
-@ 
-
 <<getGOperGene, eval=TRUE, cache=TRUE>>=
 mm9.gene2GO <- with(mm9GO, split(go, ensembl_gene_id))
 @ 
@@ -692,9 +686,9 @@ transcription (e.\ g.\ , \cite{Fischer2008}) and the gene
 cells~\cite{Hamajima1996}.
 %
 <<chipAlongChromCrmp1, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
-chipAlongChrom(X, chrom="5", xlim=c(37.63e6,37.64e6), probeAnno=probeAnno,
-               gff=mm9genes, ylim=c(-3,5), paletteName="Set2")
-@ 
+chipAlongChrom(X, chrom="5", xlim=c(37.63e6,37.64e6), ylim=c(-3,5),
+     probeAnno=probeAnno, gff=mm9genes, paletteName="Set2")
+@
 %
 \myincfig{ccTutorialSupplement-chipAlongChromCrmp1}{0.9\textwidth}{%
 Normalized reporter intensities for H3K4me3 ChIP around the TSS of the
@@ -1056,8 +1050,13 @@ sepRegRes <- sigGOTable(selGenes=selGenes)
 print(sepRegRes)
 @ 
 <<printSepRegRes, eval=TRUE, echo=FALSE, results=tex>>=
-print(xtable(sepRegRes, label="tab-sepRegResGO", caption="\\sl GO terms that are significantly over-represented among genes that show different H3K4me3 regions in heart and brain cells"), type="latex", table.placement="htb", size="scriptsize", include.rownames=FALSE)
-@ 
+# this chunk only provides a prettier output of the table sepRegRes
+#  in latex format
+print(xtable(sepRegRes, label="tab-sepRegResGO", 
+   caption="\\sl GO terms that are significantly over-represented among genes that show different H3K4me3 regions in heart and brain cells"),
+   type="latex", table.placement="htb", size="scriptsize",
+   include.rownames=FALSE)
+@
 %
 See the results in Table \ref{tab-sepRegResGO}.
 
@@ -1081,11 +1080,7 @@ AB <- ReadAffy(celfile.path=system.file("expression",
 barreraExpressionX <- mas5(AB)
 barreraExpressionX$Tissue <- sapply(
    strsplit(sampleNames(barreraExpressionX),split="\\."),"[",3)
-@ 
-<<loadExpressionData, eval=FALSE, echo=FALSE>>=
-## to speed up creation of the vignette, we load the saved result of the above code chunks
-data("barreraExpressionX")
-@ 
+@
 
 \subsection{Map Ensembl identifier to Affymetrix probe sets}
 
@@ -1102,16 +1097,12 @@ bmRes <- getBM(attributes=c("ensembl_gene_id","affy_mouse430_2"),
 bmRes <- subset(bmRes, nchar(affy_mouse430_2)>0)
 arrayGenesToProbeSets <- split(bmRes[["affy_mouse430_2"]], 
                                bmRes[["ensembl_gene_id"]])
-@ 
-% alternatively:
-<<loadArrayGenes, eval=FALSE, echo=FALSE>>=
-data("arrayGenesToProbeSets")
-@ 
+@
 How many probe sets are mapped to each gene?
 %
 <<lookArrayGenesToProbeSets>>=
 table(listLen(arrayGenesToProbeSets))
-@ 
+@
 
 \small
 
