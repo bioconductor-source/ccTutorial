@@ -30,8 +30,8 @@ raiselinks,plainpages,pdftex]{hyperref}
 \usepackage{verbatim}
 \usepackage{subfigure}
 
-\parindent0mm
-\parskip2ex plus0.5ex minus0.3ex
+\parindent 0mm
+\parskip 2ex plus0.5ex minus0.3ex
 
 \newcommand{\Robject}[1]{{\texttt{#1}}}
 \newcommand{\Rfunction}[1]{{\texttt{#1}}}

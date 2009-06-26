@@ -1,7 +1,7 @@
 Package: ccTutorial
 Type: Package
 Title: Data package for ChIP-chip tutorial
-Version: 1.0.3
+Version: 1.0.4
 Date: 2009-02-10
 Author: Joern Toedling, Wolfgang Huber
 Maintainer: Joern Toedling <toedling@ebi.ac.uk>
