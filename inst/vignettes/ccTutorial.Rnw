@@ -56,7 +56,7 @@ raiselinks,plainpages,pdftex]{hyperref}
 %%%%%%% START EDITING HERE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-\SweaveOpts{include=FALSE,keep.source=TRUE} % eps=false
+\SweaveOpts{include=FALSE,keep.source=TRUE, eps=FALSE}
 
 {\renewcommand\thefootnote{\fnsymbol{footnote}}
 \title{Analyzing ChIP-chip Data Using Bioconductor}
@@ -65,7 +65,7 @@ Wolfgang Huber\\[0.5cm]
 {\small EMBL European Bioinformatics Institute,
 Wellcome Trust Genome Campus},\\[0.01cm]
 {\small Hinxton, United Kingdom}\\[0.8cm]
-{\scriptsize $^\star$Email: toedling@ebi.ac.uk\hfill}}
+{\scriptsize $^\star$Email: joern.toedling@curie.fr\hfill}}
 \date{}
 \maketitle
 }
@@ -398,13 +398,13 @@ than, say, for transcription microarrays.
 \section*{Visualizing Intensities along the Chromosome}
 
 We visualize the preprocessed H3K4me3 ChIP-chip reporter levels around
-the start of the \textsl{Actc1} gene, which encodes the cardiac actin
+the start of the gene~\textsl{Actc1}, which encodes the cardiac actin
 protein.
 %
 <<chipAlongChromActc1, eval=TRUE, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
-chipAlongChrom(X, chrom="2", xlim=c(113.8725e6,113.8835e6), ylim=c(-3,5),
-               probeAnno=probeAnno, gff=mm9genes, paletteName='Set2')
-@ 
+plot(X, probeAnno, chrom="2", xlim=c(113.8725e6,113.8835e6), 
+     ylim=c(-3,5), gff=mm9genes, paletteName='Set2')
+@
 %
 
 The degree of H3K4me3 enrichment over the reporters mapped to 
@@ -442,22 +442,22 @@ and the spacing between reporter matches on the genome.
 smoothX <- computeRunningMedians(X, probeAnno=probeAnno, 
   modColumn="Tissue", allChr=allChrs, winHalfSize=450, min.probes=5)
 sampleNames(smoothX) <- paste(sampleNames(X),"smoothed",sep=".")
-@ 
+combX <- cbind2(X, smoothX)
+@
 %
 Compare the smoothed reporter intensities with the original ones around the
-start of the gene \emph{Actc1}.
+start of the gene~\textsl{Actc1}.
 %
 <<smoothAlongChromActc1, eval=TRUE, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
-chipAlongChrom(X, chrom="2", xlim=c(113.8725e6,113.8835e6), ylim=c(-3,5),
-               probeAnno=probeAnno, gff=mm9genes, paletteName='Set2')
-chipAlongChrom(smoothX, chrom="2", xlim=c(113.8725e6,113.8835e6), ilwd=4,
-               probeAnno=probeAnno, paletteName='Dark2', add=TRUE)
-@ 
+plot(combX, probeAnno, chrom="2", xlim=c(113.8725e6,113.8835e6),
+     ylim=c(-3,5), gff=mm9genes, 
+     colPal=c(brewer.pal(8,"Set2")[1:2],brewer.pal(8,"Dark2")[1:2]))
+@
 %
-See the result in Figure \ref{ccTutorial-smoothAlongChromActc1}.
+See the result in Figure~\ref{ccTutorial-smoothAlongChromActc1}.
 After smoothing, the reporters give a more concise picture that
 there is H3K4me3 enrichment inside and upstream of
-\emph{Actc1} in heart but not in brain cells. 
+\textsl{Actc1} in heart but not in brain cells. 
 
 
 \section*{Finding ChIP-enriched Regions}
@@ -682,33 +682,18 @@ are used for evaluating a node are not used for evaluating any
 of its ancestor nodes \cite[\emph{elim} algorithm]{Alexa2006}. 
 
 <<useTopGO, results=hide, cache=TRUE>>=
-sigGOTable <- function(selGenes, GOgenes=arrayGenesWithGO, 
- gene2GO=mm9.gene2GO[arrayGenesWithGO], ontology="BP", maxP=0.001)
-{
-  inGenes <- factor(as.integer(GOgenes %in% selGenes))
-  names(inGenes) <- GOgenes
-  GOdata <- new("topGOdata", ontology=ontology, allGenes=inGenes, 
-                annot=annFUN.gene2GO, gene2GO=gene2GO)
-  myTestStat <- new("elimCount", testStatistic=GOFisherTest, 
-                    name="Fisher test", cutOff=maxP)
-  mySigGroups <- getSigGroups(GOdata, myTestStat)
-  sTab <- GenTable(GOdata, mySigGroups, topNodes=length(usedGO(GOdata)))
-  names(sTab)[length(sTab)] <- "p.value"
-  sTab <- subset(sTab, as.numeric(p.value) < maxP)
-  sTab$Term <- sapply(mget(sTab$GO.ID, env=GOTERM), Term)
-  return(sTab)
-}
-
-brainRes <- sigGOTable(brainOnlyGenes)
+brainRes <- sigGOTable(brainOnlyGenes, gene2GO=mm9.gene2GO,
+                       universeGenes=arrayGenesWithGO)
 print(brainRes)
-@ 
+@
 %
-See the result GO terms in Table \ref{tab-brainResGO}.
+See the result GO terms in Table~\ref{tab-brainResGO}.
 We perform the same analysis for genes showing heart-specific relation
 to  H3K4me3 enrichment.
 %
 <<useTopGOHeart, results=hide, cache=TRUE>>=
-heartRes <- sigGOTable(heartOnlyGenes)
+heartRes <- sigGOTable(heartOnlyGenes,  gene2GO=mm9.gene2GO,
+                       universeGenes=arrayGenesWithGO)
 print(heartRes)
 @ 
 %
@@ -909,13 +894,13 @@ print(xtable(heartRes, label="tab-heartResGO",
 \section*{Figure Legends}
 
 %% Figure 1
-\myincfig{ccTutorial-chipAlongChromActc1}{0.98\textwidth}{Normalized reporter intensities for H3K4me3 ChIP around the TSS of the \emph{Actc1} gene in \emph{M. musculus} brain and heart cells. The ticks below the genomic coordinate axis on top indicate genomic positions matched by reporters on the microarray. The blue arrows on the bottom mark the Actc1 gene with the arrow direction indicating that the gene is located on the Crick strand.}
+\myincfig{ccTutorial-chipAlongChromActc1}{0.98\textwidth}{Normalized reporter intensities for H3K4me3 ChIP around the TSS of the gene~\textsl{Actc1} in \textsl{M. musculus} brain and heart cells. The ticks on the genomic coordinate axis below indicate genomic positions matched by reporters on the microarray. The blue box below the genomic coordinate axis marks the gene~\textsl{Actc1} with the position below the axis indicating that the gene is located on the Crick strand.}
 
 
 %% Figure 2
 \myincfig{ccTutorial-smoothAlongChromActc1}{0.98\textwidth}{Normalized
   and smoothed reporter intensities for H3K4me3 ChIP around the TSS of
-  the \emph{Actc1} gene in \emph{M. musculus} brain and heart cells.}
+  the gene~\textsl{Actc1} in \emph{M. musculus} brain and heart cells.}
 
 
 %% Figure 3

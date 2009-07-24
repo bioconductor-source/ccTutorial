@@ -1,5 +1,5 @@
 %\VignetteIndexEntry{Supplement to A tutorial on how to analyze ChIP-chip readouts using Bioconductor}
-%\VignetteDepends{weaver, Ringo, biomaRt, topGO, xtable}
+%\VignetteDepends{weaver, Ringo, biomaRt, topGO, xtable, CMARRT}
 %\VignetteKeywords{microarray ChIP-chip NimbleGen nimblegen}
 %\VignettePackage{ccTutorial} % name of package
 
@@ -76,11 +76,11 @@ raiselinks,plainpages,pdftex]{hyperref}
 %%%%%%% START EDITING HERE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-\SweaveOpts{include=FALSE, keep.source=TRUE} %
+\SweaveOpts{include=FALSE, keep.source=TRUE, eps=FALSE} %
 
 \title{Supplement: Analyzing ChIP-chip data using Bioconductor}
 \author{Joern Toedling, Wolfgang Huber}
-\date{}
+%\date{}
 \maketitle
 
 \tableofcontents
@@ -88,7 +88,7 @@ raiselinks,plainpages,pdftex]{hyperref}
 \section{Introduction}
 
 This document supplements the manuscript ``Analyzing ChIP-chip data
-using Bioconductor''. 
+using Bioconductor''~\citep{Toedling2008}. 
 The manuscript demonstrates how to use the tools R and Bioconductor
 for a ChIP-chip data analysis.
 
@@ -126,7 +126,8 @@ library("biomaRt")
 library("topGO")
 library("xtable")
 library("ccTutorial")
-@ 
+library("CMARRT")
+@
 
 This document has been written in the 
 \texttt{Sweave}~\cite{Leisch2002} format, which combines
@@ -277,8 +278,8 @@ and both channels.
 
 <<imageRG, eval=TRUE, results=hide,echo=TRUE>>=
 RG1breaks <- c(0,quantile(RGs[[1]]$G, probs=seq(0,1,by=0.1)),2^16)
-jpeg("ccTutorialArrayImages.jpg", quality=100,
-     height=1074*1.5, width=768*1.5)
+png("ccTutorialArrayImages.png", units="in", res=200,
+     height=10.74*1.5, width=7.68*1.5)
 par(mar=c(0.01,0.01,2.2,0.01))
 layout(matrix(c(1,2,5,6,3,4,7,8,9,10,13,14,11,12,15,16),
        ncol=4,byrow=TRUE))
@@ -289,20 +290,20 @@ for (this.set in 1:4){
                                     sep="")))(length(RG1breaks)-1)
     for (arrayno in 1:2){
       image(thisRG, arrayno, channel=this.channel, 
-            mybreaks=RG1breaks, mycols=my.colors, frame.plot=FALSE)
+            mybreaks=RG1breaks, mycols=my.colors)
       mtext(side=3, line=0.2, font=2, text=colnames(thisRG[[toupper(
             substr(this.channel,1,1))]])[arrayno])
 }}}
 dev.off()
 @
 
-\myincfig{ccTutorialArrayImages.jpg}{0.95\textwidth}{Spatial
+\myincfig{ccTutorialArrayImages}{0.95\textwidth}{Spatial
   distribution of raw reporter intensities laid out by the reporter
   position on the microarray surface. Each pair of one green and one
   red image on top of each other are the Cy3 and Cy5 readouts of the
   same hybridized microarray.}
 
-See Figure \ref{ccTutorialArrayImages.jpg} for the images.
+See Figure~\ref{ccTutorialArrayImages} for the images.
 Minor artifacts can be seen. The arrays of the first set (48153 and 48172)
 show a blotch of lower intensities in the upper right area of the array.
 These artifacts affect only a small part of the
@@ -455,9 +456,9 @@ positions\footnote{More precisely, a reporter matches a 25-nucleotide
   genomic position of its central nucleotide, which is why I refer to
   the ``position'' that is matched by a reporter.}.
 For example, how many reporter-match positions on chromosome~9
-are unique matches of those reporters (code: 0) and how many are
+are unique matches of those reporters (code:~0) and how many are
 matched by reporters that have multiple matches in the genome
-(code:3)?
+(code:~3)?
 %
 <<showProbeAnno2>>=
 table(probeAnno["9.unique"])
@@ -686,19 +687,20 @@ transcription (e.\ g.\ , \cite{Fischer2008}) and the gene
 cells~\cite{Hamajima1996}.
 %
 <<chipAlongChromCrmp1, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
-chipAlongChrom(X, chrom="5", xlim=c(37.63e6,37.64e6), ylim=c(-3,5),
-     probeAnno=probeAnno, gff=mm9genes, paletteName="Set2")
+plot(X, probeAnno, chrom="5", xlim=c(37.63e6,37.64e6), ylim=c(-3,5),
+     gff=mm9genes, paletteName="Set2")
 @
 %
 \myincfig{ccTutorialSupplement-chipAlongChromCrmp1}{0.9\textwidth}{%
 Normalized reporter intensities for H3K4me3 ChIP around the TSS of the
-\textsl{Crmp1} gene in \emph{M. musculus} brain and heart cells. The
-ticks below the genomic coordinate axis on top indicate genomic
-positions matched by reporters on the microarray. The blue arrows on
-the bottom mark the Crmp1 gene with the arrow direction indicating
-that the gene is located on the Watson strand.}
+gene~\textsl{Crmp1} in \emph{M. musculus} brain and heart cells. The
+ticks on the genomic coordinate axis on below indicate genomic
+positions matched by reporters on the microarray. 
+The blue box above the genomic coordinate axis marks
+the position of the gene~\textsl{Crmp1} with its position above the axis
+indicating that the gene is located on the Watson strand.}
 
-See the result in Figure \ref{ccTutorialSupplement-chipAlongChromCrmp1}.
+See the result in Figure~\ref{ccTutorialSupplement-chipAlongChromCrmp1}.
 In brain cells, the intensities for enrichment of H3K4me3 around the
 gene's start position tend to be positive, 
 while the signal for heart cells is around or below zero.
@@ -733,16 +735,16 @@ enrichment at such a position.
 smoothX <- computeRunningMedians(X, probeAnno=probeAnno, 
    modColumn="Tissue", allChr=allChrs, winHalfSize=450, min.probes=5)
 sampleNames(smoothX) <- paste(sampleNames(X),"smoothed",sep=".")
-@ 
+combX <- cbind2(X, smoothX)
+@
 %
 Compare the smoothed reporter intensities with the non-smoothed ones around the
 start of the gene \emph{Crmp1}.
 %
 <<smoothAlongChromCrmp1, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
-chipAlongChrom(X, chrom="5", xlim=c(37.63e6,37.64e6), probeAnno=probeAnno,
-               gff=mm9genes, paletteName="Set2", ylim=c(-3,5))
-chipAlongChrom(smoothX, chrom="5", xlim=c(37.63e6,37.64e6), add=TRUE,
-               probeAnno=probeAnno,ilwd=4, paletteName="Dark2")
+plot(combX, probeAnno, chrom="5", xlim=c(37.63e6,37.64e6),
+     gff=mm9genes, ylim=c(-3,5),
+     colPal=c(brewer.pal(8,"Set2")[1:2],brewer.pal(8,"Dark2")[1:2]))
 @ 
 %
 \myincfig{ccTutorialSupplement-smoothAlongChromCrmp1}{0.9\textwidth}{Normalized and smoothed reporter intensities for H3K4me3 ChIP around the TSS of the gene \emph{Crmp1} in \emph{M. musculus} brain and heart cells.}
@@ -810,15 +812,17 @@ ChIP against H3K4me3 in brain cells.
 <<getChersXD, echo=FALSE>>=
 data("chersX")
 chersXD <- as.data.frame(chersX)
-@ 
+@
 <<tryCmarrt, cache=TRUE>>=
-library("CMARRT")
 cmarrtDat <- do.call("rbind", lapply(as.list(allChrs), function(chr){
   areUni <- probeAnno[paste(chr,"unique",sep=".")]==0
+  chrIdx <- match(probeAnno[paste(chr,"index",sep=".")][areUni],
+                  featureNames(X))
   chrDat <- data.frame("chr"=rep(chr, sum(areUni)),
      "start"=probeAnno[paste(chr,"start",sep=".")][areUni],
      "stop"=probeAnno[paste(chr,"end",sep=".")][areUni],
-     "logR"=exprs(X)[probeAnno[paste(chr,"index",sep=".")][areUni],1])
+     "logR"=exprs(X)[chrIdx,1],
+     stringsAsFactors=FALSE)
 }))
 
 cmarrtRes <- cmarrt.ma(cmarrtDat, M=0.5, frag.length=900,
@@ -897,26 +901,10 @@ heartOnlyGenes <- setdiff(heartGenes, brainGenes)
 @ 
 
 <<useTopGO, echo=FALSE, results=hide>>=
-sigGOTable <- function(selGenes, GOgenes=arrayGenesWithGO, 
-                       gene2GO=mm9.gene2GO[arrayGenesWithGO],
-                       ontology="BP", maxP=0.001)
-{
-  inGenes <- factor(as.integer(GOgenes %in% selGenes))
-  names(inGenes) <- GOgenes
-  GOdata <- new("topGOdata", ontology=ontology, allGenes=inGenes,
-                annot=annFUN.gene2GO, gene2GO=gene2GO)
-  myTestStat <- new("elimCount", testStatistic=GOFisherTest,
-                    name="Fisher test", cutOff=maxP)
-  mySigGroups <- getSigGroups(GOdata, myTestStat)
-  sTab <- GenTable(GOdata, mySigGroups, topNodes=length(usedGO(GOdata)))
-  names(sTab)[length(sTab)] <- "p.value"
-  sTab <- subset(sTab, as.numeric(p.value) < maxP)
-  sTab$Term <- sapply(mget(sTab$GO.ID, env=GOTERM), Term)
-  return(sTab)
-}
-
-brainRes <- sigGOTable(brainOnlyGenes)
-heartRes <- sigGOTable(heartOnlyGenes)
+brainRes <- sigGOTable(brainOnlyGenes, gene2GO=mm9.gene2GO,
+                       universeGenes=arrayGenesWithGO)
+heartRes <- sigGOTable(heartOnlyGenes,  gene2GO=mm9.gene2GO,
+                       universeGenes=arrayGenesWithGO)
 @ 
 
 
@@ -972,70 +960,27 @@ targetPos <- seq(-5000, 10000, by=250)
 @ 
 %
 For each gene, we assess the genomic region from 5kb upstream to
-10 kb downstream of the gene start.
+10 kb downstream of the gene start, obtain the fold-change values
+for each distance bin and for all selected genes, summarize the
+fold-changes by specified quantiles and obtain densities of
+fold-change over distance to gene start.
+We normalize these densities of the observed fold changes
+by the densities of mapped reporters.
 %
-<<compareH3K4me3InSepRegionGenes, cache=TRUE, results=hide>>=
-selGenesVal <- vector("list", length(selGenes))
-for (i in 1:length(selGenes)){
-  if (i %% 1000 == 0) cat(i,"... ")
-  ix <- mm9.g2p[[selGenes[i]]]
-  if (length(ix)==0) next
-  iy <- exprs(smoothX)[names(ix),,drop=FALSE]
-  if (sum(!is.na(iy[,1]))<2) next
-  iy <- apply(iy, 2, function(a)
-              approx(x=ix, y=a, xout=targetPos)$y)
-  selGenesVal[[i]] <- iy
-}
-names(selGenesVal) <- selGenes
-@ 
-<<loadSelGenesVal, eval=FALSE, echo=FALSE>>=
-load(file="selGenesVal.RData")
-@ 
-%
-<<getDataQuantilesOfSelGenesVal>>=
-quants <- c(0.1,0.3,0.5,0.7, 0.9)
-valsBySample <- lapply(list("H3K4me3.brain.smoothed",
-   "H3K4me3.heart.smoothed"), function(thisSample){
-      do.call("cbind", lapply(selGenesVal, function(theseValues){
-      return(theseValues[,thisSample,drop=FALSE])}))})
-names(valsBySample) <- c("H3K4me3.brain.smoothed",
-                         "H3K4me3.heart.smoothed")
-quantsBySample <- lapply(valsBySample, function(theseValues)
-  apply(theseValues, 1, quantile, probs=quants, na.rm=TRUE))
-@ 
-%
-We normalize these densities of the observed fold changes by genomic 
-positions by the densities of mapped reporters.
-%
-<<getProbePosDensity>>=
-probePosDens <- density(unlist(mm9.g2p, use.names=FALSE))
-probePosY <- approx(x=probePosDens$x, y=probePosDens$y, 
-                    xout=targetPos)$y
-probePosY <- probePosY/max(probePosY)
-@ 
-%
+<<newQuantsOverPostions, cache=TRUE>>=
+selQop <- quantilesOverPositions(smoothX,
+   selGenes=selGenes, quantiles=c(0.5, 0.9),
+   g2p=mm9.g2p, positions=targetPos)
+@
+
 <<sepRegGenesSmoothedQuantiles, fig=TRUE, include=FALSE, width=8, height=5, dens=TRUE, results=hide, keep.source=TRUE>>=
-plot(x=0,y=0, ylim=c(-0.2,3.5), xlim=range(targetPos),
-     xaxt="n", type="n", xlab="Distance to gene start [bp]",
-     ylab="smoothed fold-change")
-axis(side=1, at=seq(-5000, 10000, by=1000),
-     labels=paste(-5:10,"kb",sep=""))
-mycolors <- c("green","orange")
-for (i in 1:2){
-  lines(x=targetPos,y=quantsBySample[[i]][3,]*probePosY, 
-        lwd=2, col=mycolors[i])
-  lines(x=targetPos,y=quantsBySample[[i]][5,]*probePosY, 
-        lwd=2, lty=2, col=mycolors[i])
-}
-legend(x="topleft", fill=c("green","orange"), bty="n", 
-       legend=c("H3K4me3 brain", "H3K4me3 heart"))
-legend(x="topright", lty=c(2,1), lwd=2, bty="n",
-       legend=c("90% quantile", "median"))
-@ 
+plot(selQop, c("green","orange"))
+@
 %
 \myincfig{ccTutorialSupplement-sepRegGenesSmoothedQuantiles}{0.85\textwidth}{Densities of selected quantiles of the smoothed fold-changes for H3K4me3 ChIP in \emph{M. musculus} brain and heart cells for genes that show H3K4me3 enriched regions in both tissues but in separate positions.}
 %
-See Figure \ref{ccTutorialSupplement-sepRegGenesSmoothedQuantiles} for the densities.
+See Figure~\ref{ccTutorialSupplement-sepRegGenesSmoothedQuantiles}
+for the densities.
 There are no clear tissue-wise trends where these enriched regions are in
 relation to the gene start coordinate. In both tissues, the smoothed
 intensities on average are highest within 1kb after the gene start
@@ -1046,7 +991,8 @@ We also investigate genes that have separate enriched regions in both tissues
 for over-represented GO annotations.
 
 <<topGOsepRegGenes, results=hide>>=
-sepRegRes <- sigGOTable(selGenes=selGenes)
+sepRegRes <- sigGOTable(selGenes=selGenes, gene2GO=mm9.gene2GO,
+                        universeGenes=arrayGenesWithGO)
 print(sepRegRes)
 @ 
 <<printSepRegRes, eval=TRUE, echo=FALSE, results=tex>>=
@@ -1089,7 +1035,7 @@ oligonucleotide microarray platform from Affymetrix.
 Using biomaRt, we create a mapping of Ensembl gene identifiers
 to the probe set identifiers on that microarray design.
 % new one for author-provided expression data:
-<<mapEnsToAffy, keep.source=TRUE, eval=TRUE, cache=TRUE>>=
+<<mapEnsToAffy, keep.source=TRUE, eval=TRUE, cache=TRUE, results=hide>>=
 ensembl <- useMart("ensembl", dataset="mmusculus_gene_ensembl")
 bmRes <- getBM(attributes=c("ensembl_gene_id","affy_mouse430_2"), 
                filters="ensembl_gene_id", value=arrayGenes, 
