@@ -1,12 +1,12 @@
 Package: ccTutorial
 Type: Package
 Title: Data package for ChIP-chip tutorial
-Version: 1.0.8
-Date: 2009-07-30
+Version: 1.0.9
+Date: 2009-07-31
 Author: Joern Toedling, Wolfgang Huber
 Maintainer: Joern Toedling <joern.toedling@curie.fr>
 Depends:  R (>= 2.9.0), Ringo(>= 1.9.8), affy(>= 1.23.4), topGO(>= 1.13.1)
-Suggests: biomaRt, topGO, Biobase(>= 2.5.5), xtable
+Suggests: biomaRt, topGO, Biobase(>= 2.5.5), xtable, CMARRT
 Description: This is a data package that accompanies a ChIP-chip
    tutorial, which has been published in PLoS Computational Biology.
    The data and source code in this package allow the reader to

@@ -1,5 +1,5 @@
 %\VignetteIndexEntry{A tutorial on how to analyze ChIP-chip readouts using Bioconductor}
-%\VignetteDepends{weaver, ccTutorial, Ringo, biomaRt, topGO, xtable}
+%\VignetteDepends{ccTutorial, Ringo, biomaRt, topGO, xtable}
 %\VignetteKeywords{microarray ChIP-chip NimbleGen nimblegen}
 %\VignettePackage{ccTutorial} % name of package
 
