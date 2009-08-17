@@ -1,5 +1,9 @@
+% THIS IS ONLY A placeholder for the actual vignette, which takes too long
+% time to build. Therefore, in this placeholder vignette
+% eval=FALSE is set for all code chunks
+
 %\VignetteIndexEntry{A tutorial on how to analyze ChIP-chip readouts using Bioconductor}
-%\VignetteDepends{ccTutorial }
+%\VignetteDepends{ccTutorial, Ringo, biomaRt, topGO, xtable}
 %\VignetteKeywords{microarray ChIP-chip NimbleGen nimblegen}
 %\VignettePackage{ccTutorial} % name of package
 
@@ -9,41 +13,39 @@
 %% library("weaver");Sweave("ccTutorial.Rnw", driver=weaver())
 
 \documentclass[11pt, a4paper, fleqn]{article}
-\usepackage{geometry}
 \usepackage[%
 baseurl={http://www.bioconductor.org},%
-pdftitle={Analyzing ChIP-chip data using Bioconductor},%
+pdftitle={Analyzing ChIP-chip Data Using Bioconductor},%
 pdfauthor={Joern Toedling},%
 pdfsubject={Vignette},%
 pdfkeywords={Bioconductor},%
-pagebackref,bookmarks,%colorlinks,linkcolor=darkblue,citecolor=darkblue,%
+bookmarks,%colorlinks,linkcolor=darkblue,citecolor=darkblue,%
 filecolor=darkblue,urlcolor=darkblue,pagecolor=darkblue,%
 raiselinks,plainpages,pdftex]{hyperref}
 
-\usepackage{amsmath,a4,t1enc, graphicx}
-\usepackage{verbatim}
-\usepackage{subfigure}
-\usepackage{boxedminipage}
+\usepackage{amsmath, graphicx}
+\usepackage[compress]{natbib}
+\bibpunct{[}{]}{,}{n}{}{,}
 
-\parindent 0mm
-\parskip 2ex plus0.5ex minus0.3ex
+\parindent0mm
+\parskip2ex plus0.5ex minus0.3ex
 
 \newcommand{\Robject}[1]{{\texttt{#1}}}
-\newcommand{\Rfunction}[1]{{\texttt{#1}}}
-\newcommand{\Rpackage}[1]{{\textit{#1}}}
-\newcommand{\Rclass}[1]{{\textit{#1}}}
+\newcommand{\Rfunction}[1]{\mbox{\texttt{#1}}}
+\newcommand{\Rpackage}[1]{\mbox{\textit{#1}}}
+\newcommand{\Rclass}[1]{\mbox{\textit{#1}}}
 \newcommand{\Rmethod}[1]{{\textit{#1}}}
 \newcommand{\Rfunarg}[1]{{\texttt{#1}}}
 \newcommand{\phead}[1]{{\flushleft \sf \small \textbf{#1} \quad}}
 \newcommand{\todo}{{\textbf{TO DO:} \quad}}
 
 \newcommand{\myincfig}[3]{%
-  \begin{figure}[tbh]
-    \begin{center}
-      \includegraphics[width=#2]{#1}
-      \caption{\label{#1}\textit{#3}}
-    \end{center}
-  \end{figure}
+\begin{figure}[h!tb]
+\begin{center}
+\includegraphics[width=#2]{#1} % uncomment this for testing prior to submission
+\caption{\label{#1}\textit{#3}}
+\end{center}
+\end{figure}
 }
 
 \addtolength{\textwidth}{2cm}
@@ -54,29 +56,876 @@ raiselinks,plainpages,pdftex]{hyperref}
 \addtolength{\skip\footins}{1cm}
 \addtolength{\fboxsep}{8pt}
 
+
 %%%%%%% START EDITING HERE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-\SweaveOpts{eps=false,include=FALSE,keep.source=TRUE}
+\SweaveOpts{eval=FALSE, include=FALSE,keep.source=TRUE, eps=FALSE}
 
-\title{Analyzing ChIP-chip data using Bioconductor}
-\author{Joern Toedling, Wolfgang Huber}
+{\renewcommand\thefootnote{\fnsymbol{footnote}}
+\title{Analyzing ChIP-chip Data Using Bioconductor}
+\author{Joern Toedling\,$^\star$,
+Wolfgang Huber\\[0.5cm]
+{\small EMBL European Bioinformatics Institute,
+Wellcome Trust Genome Campus},\\[0.01cm]
+{\small Hinxton, United Kingdom}\\[0.8cm]
+{\scriptsize $^\star$Email: joern.toedling@curie.fr\hfill}}
+\date{}
 \maketitle
+}
+\addtocounter{footnote}{-1}
 
 <<prepare, echo=FALSE, results=hide>>=
 options(length=55, digits=3)
+options(SweaveHooks=list(
+   along=function() par(mar=c(2.5,4.2,4,1.5), font.lab=2),
+   boxplot=function() par(mar=c(5,5,1,1), font.lab=2)))
 set.seed(1)
+@
+
+\section*{Introduction}
+
+ChIP-chip, chromatin immunoprecipitation combined with DNA
+microarrays, is a widely used assay for DNA-protein binding and
+chromatin plasticity, which are of fundamental interest for the
+understanding of gene regulation.
+
+% Use cases
+The interpretation of ChIP-chip data poses two computational challenges:
+first, what can be termed primary statistical analysis, which includes
+quality assessment, data normalization and transformation, and the
+calling of regions of interest; second, integrative bioinformatic
+analysis, which interprets the data in the context of existing genome
+annotation and of related experimental results obtained, for example,
+from other ChIP-chip or (m)RNA abundance microarray experiments.
+
+% Specs
+Both tasks rely heavily on visualization, which helps to
+explore the data as well as to present the analysis results.  For the
+primary statistical analysis, some standardization is
+possible and desirable:
+commonly used experimental designs and microarray platforms
+allow the development of relatively standard workflows
+and statistical procedures.
+Most software available for ChIP-chip data analysis can be employed
+in such standardized
+approaches~\cite{Buck2005,Ji2005,JohnsonMAT2006, Keles2007,
+Ringo2007, Zheng2007}.
+Yet even for primary analysis steps,
+it may be beneficial to adapt them to specific experiments,
+and hence it is desirable that software offers flexibility
+in the choice of algorithms for normalization, visualization and
+identification of enriched regions.
+
+For the second task, integrative bioinformatic analysis, the datasets,
+questions, and applicable methods are diverse, and a degree of
+flexibility is needed that often can only be achieved in a
+programmable environment.
+In such an environment, users are not limited to predefined functions,
+such as the ones made available as ``buttons'' in a GUI, but can
+supply custom functions that are designed toward the analysis at
+hand.
+
+Bioconductor~\cite{bioconductor} is an open source and open
+development software project for the analysis and comprehension of
+genomic data, and it offers tools that cover a broad range of
+computational methods, visualizations, and experimental data types, and
+is designed to allow the construction of scalable, reproducible and
+interoperable workflows. A consequence of the wide range of
+functionality of Bioconductor and its concurrency with research
+progress in biology and computational statistics is that using its
+tools can be daunting for a new user.
+%% Change1: added citation of general introductory books for R and BioC
+Various books provide a good general introduction to R and
+\mbox{Bioconductor}~(e.g.,~\cite{Gentleman2008,biocbook2005,biocbook2008})
+and most Bioconductor packages are accompanied by extensive
+documentation.
+This tutorial covers basic ChIP-chip data analysis with Bioconductor.
+Among the packages used are \Rpackage{Ringo}~\cite{Ringo2007},
+\Rpackage{biomaRt}~\cite{Durinck2005} and
+\Rpackage{topGO}~\cite{Alexa2006}.
+
+We wrote this document in the \texttt{Sweave}~\cite{RGRR2005}
+format, which combines explanatory text and the actual R source
+code used in this analysis~\cite{KnuthLiterateProgramming1992}. 
+Thus the analysis can be reproduced by the reader.  
+An R package \Rpackage{ccTutorial} that contains the data,
+the text and code presented here,
+and supplementary text and code is available
+from the Bioconductor Web site.
+%
+<<loadpackage, results=hide>>=
+library("Ringo")
+library("biomaRt")
+library("topGO")
+library("xtable")
+library("ccTutorial")
+library("lattice")
+@
+%
+\phead{Terminology.}
+\emph{Reporters} are the DNA sequences fixed to the microarray; they
+are designed to specifically hybridize with corresponding genomic
+fragments from the immuno-precipitate.
+A reporter has a unique identifier and a unique sequence,
+and it can appear in one or multiple \emph{features}
+on the array surface~\cite{MIAMEglossary}.
+The \emph{sample} is the aliquot of immuno-precipitated or \textit{input}
+DNA that is hybridized to the microarray.
+We shall call a genomic region apparently enriched by ChIP
+a \emph{ChIP-enriched region}.  
+
+\phead{The Data.}
+We consider a ChIP-chip dataset on 
+a post-translational modification of
+% the tail of 
+histone protein H3, namely tri-methylation of its
+Lysine residue 4, in short H3K4me3.
+H3K4me3 has been associated with active 
+transcription (e.\ g.\ , \cite{Santos-Rosa2002, Fischer2008}).
+Here, enrichment for H3K4me3 was investigated in \emph{Mus musculus}
+brain and heart cells.
+The microarray platform is a set of four arrays manufactured by NimbleGen
+containing 390k reporters each.
+The reporters were designed to tile 32,482 selected regions of the
+\emph{Mus musculus} genome~(assembly mm5) with one base every
+100~bp, with a different set of promoters represented on each of the
+four arrays~\cite[Methods: Condensed array ChIP-chip]{Barrera2008}.
+We obtained the data from the GEO
+repository~\cite{Edgar2002} (accession GSE7688).
+
+
+\section*{Importing the data into R}
+
+For each microarray, the scanner output consists of two files, 
+one holding the Cy3 intensities (the untreated \textit{input} sample),
+the other one the Cy5 intensities, 
+coming from the immuno-precipitated sample. 
+These files are tab-delimited text files
+in NimbleGen's \emph{pair} format. 
+Since the reporters are distributed over four arrays,
+we have 16 files (4 microarrays $\times$ 2 dyes $\times$ 2 tissues).
+
+<<locateData>>=
+pairDir <- system.file("PairData",package="ccTutorial") 
+list.files(pairDir, pattern="pair$")
+@
+
+One text file per array describes the samples, including which
+two \emph{pair} files belong to which sample.
+Another file, \texttt{spot\-types.text},
+describes the reporter categories on the arrays.
+
+We read in the raw reporter intensities and obtain four objects
+of class \Rclass{RGList}, a class defined in package
+\Rpackage{limma}~\cite{Limma05}, one object per array type.
+%
+<<remark1, eval=FALSE, echo=FALSE>>=
+# the following chunk 'readNimblegen' requires at least 1GB of RAM
+# and takes about 10 minutes. If time and memory are issues, you can
+# skip this step, see chunk 'remark2' below.
+@ 
+%
+<<readNimblegen, cache=TRUE, results=hide>>=
+RGs <- lapply(sprintf("files_array%d.txt",1:4),
+  readNimblegen, "spottypes.txt", path=pairDir)
+@ 
+%
+See Text S1 for an extended description of the data import.
+
+
+\section*{Quality assessment}
+
+%The next step is quality assessment of the data.
+In this step,
+we check the arrays for obvious artifacts and
+inconsistencies between array subsets.
+
+First, we look at the spatial 
+distribution of the intensities on each array. 
+See Text~S1 for the figure and the source code.
+We do not see any artifacts such as scratches, bright spots, or
+scanning-induced patterns that would render parts of the readouts
+useless.
+
+On all arrays in our set, the Cy3 channel holds the
+intensities from the untreated \textit{input} sample, 
+and the Cy5 channel holds the immunoprecipitate
+from brain and heart, respectively.
+This experiment setup is reflected in the
+reporter intensity correlation per channel (see Text~S1).
+The correlation between the intensities
+of the \textit{input} samples is higher than between
+the ChIP samples (0.877 versus 0.734).
+
+The Bioconductor package
+\Rpackage{arrayQualityMetrics}~\cite{Kauffmann2008}
+offers an extensive set of visualizations and metrics
+for assessing microarray data quality.
+Applied to this data set,
+\Rpackage{arrayQualityMetrics} also indicates that the data
+are of good quality.
+
+
+\section*{Mapping reporters to the genome}
+
+A mapping of reporters to genomic coordinates is usually
+provided by the array manufacturer. 
+Often, however,
+remapping the reporter sequences to the genome
+may be required.
+Here, the microarray had been designed on an 
+outdated assembly of the mouse genome~(mm5, May 2004).
+We remapped the reporter sequences to the current
+assembly~(mm9, July 2007).
+
+We used \emph{Exonerate} \cite{Slater2005} for the
+remapping, requiring 97\% sequence similarity for a match.
+See Text~S1 for details and the used scripts.
+
+In \Rpackage{Ringo},
+the mapping of reporters to the genome is stored in a
+\Rclass{probeAnno} class object.
+Text~S1 contains details on its construction.
+%
+<<loadProbeAnno, eval=TRUE>>=
+data("probeAnno")
+allChrs <- chromosomeNames(probeAnno)
 @ 
 
-This is only a placeholder. The real vignette has been
-pre-created since it takes quite some time to process.
+\section*{Genome Annotation}
+\label{genome-annotation}
 
-\section*{Software versions}
+We want to relate ChIP-enriched regions
+to annotated genome elements, 
+such as potential regulatory regions and transcripts.
+Using the Bioconductor package \Rpackage{biomaRt}~\cite{Durinck2005},
+we obtain an up-to-date annotation of the mouse genome
+from the Ensembl database~\cite{Birney2004}.
+
+The source code for creating the annotation
+table \Robject{mm9genes} is given in Text~S1.
+The table holds the coordinates, Ensembl gene identifiers,
+MGI symbols, and description of all genes annotated for the
+\emph{mm9} mouse assembly. 
+%
+<<showmm9genes, results=hide>>=
+data("mm9genes")
+mm9genes[sample(nrow(mm9genes), 4), 
+   c("name", "chr", "strand", "start", "end", "symbol")]
+@ 
+%
+See the result in Table~\ref{tab-mm9genes}.
+
+Moreover, we used \Rpackage{biomaRt} to retrieve
+the Gene Ontology (GO)\cite{Ashburner2000} annotation for
+all genes in the table.
+Find the source code and further details in Text~S1.
+%
+<<loadMm9.gene2GO>>=
+data("mm9.gene2GO")
+@ 
+%
+For all genes, we stored which reporters, if any, 
+are mapped inside the gene or in its 5kb upstream region.
+%
+<<loadGenesGOAnnotation>>=
+data("mm9.g2p")
+@
+%
+For later use, we determine which genes have a sufficient number
+-- arbitrarily we say five --
+of reporters mapped to their upstream region or inside
+and which genes also have one or more GO terms
+annotated to them.
+%
+<<arrayGenes>>=
+arrayGenes <- names(mm9.g2p)[listLen(mm9.g2p)>=5]
+arrayGenesWithGO <- intersect(arrayGenes, names(mm9.gene2GO))
+@ 
+
+
+\section*{Preprocessing}
+
+For each sample, we compute the log ratios
+$\log_2(\mbox{Cy5/Cy3})$ for all reporters. 
+To adjust for systematic dye and labeling biases, we compute
+Tukey's biweight mean across each sample's $\log_2$ ratios and
+subtract it from the individual $\log_2$ ratios.  
+Each of the four microarray types contains a unique set of
+reporters.
+Thus, we preprocess the arrays separately by type and combine
+the results into one object holding the preprocessed readouts for all
+reporters.
+%
+<<remark2, eval=FALSE, echo=FALSE>>=
+# the following chunk 'preprocess' requires at least 1GB of RAM
+# and takes about 5 minutes. If time and memory are issues, 
+# instead of running that chunk, you can load the result 'X', the
+# ExpressionSet holding the fold changes after preprocessing, by
+data("X")
+@ 
+%
+<<preprocess, cache=TRUE, results=hide>>=
+MAs <- lapply(RGs, function(thisRG)
+  preprocess(thisRG[thisRG$genes$Status=="Probe",], 
+             method="nimblegen", returnMAList=TRUE))
+MA <- do.call(rbind, MAs)
+X  <- asExprSet(MA)
+sampleNames(X) <- paste(X$Cy5, X$Tissue, sep=".")
+@ 
+%
+The result is an object of class \Rclass{ExpressionSet},
+the Bioconductor class for storing preprocessed microarray data.
+Note that first creating an \Rclass{MAList} for each array type,
+combining them with \Rfunction{rbind}, and then converting the result
+into an \Rclass{ExpressionSet} is only necessary if the reporters are
+distributed over more than one microarray type. 
+For data of one microarray type only,
+you can call \Rfunction{preprocess} with argument
+\texttt{\mbox{returnMAList}=\-FALSE} and directly obtain the
+result as an \Rclass{ExpressionSet}.
+
+The above procedure is the standard method suggested by NimbleGen for
+ChIP-chip.
+The appropriate choice of normalization method generally depends
+on the data at hand, and the need for normalization is inversely
+related to the quality of the data.
+\Rpackage{Ringo} and Bioconductor offer many alternative and more
+sophisticated normalization methods, e.\,g., using the genomic DNA
+hybridization as reference~\cite{Huber2006tilingMethods}.
+However, due to the smaller dynamic range of the data in the
+\textit{input} channel, such additional effort seems less worthwhile
+than, say, for transcription microarrays.
+
+
+\section*{Visualizing Intensities along the Chromosome}
+
+We visualize the preprocessed H3K4me3 ChIP-chip reporter levels around
+the start of the gene~\textsl{Actc1}, which encodes the cardiac actin
+protein.
+%
+<<chipAlongChromActc1, eval=TRUE, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
+plot(X, probeAnno, chrom="2", xlim=c(113.8725e6,113.8835e6), 
+     ylim=c(-3,5), gff=mm9genes, paletteName='Set2')
+@
+%
+
+The degree of H3K4me3 enrichment over the reporters mapped to 
+this region seems stronger in heart cells than in brain cells 
+(see Figure~\ref{ccTutorial-chipAlongChromActc1}).
+However, the signal is highly variable and individual reporters give
+different readouts from reporters matching genomic positions only
+100~bp away, even though the DNA fragments after sonication are
+hundreds of base pairs long.
+
+See Figure~S4 in Text~S1 for the corresponding intensities around the
+start of the brain-specific gene \textit{Crpm1}~\cite{Hamajima1996}.
+
+When multiple replicates are available, it is instructive to compare
+these visualizations to assess the agreement between replicates.
+
+
+\section*{Smoothing of Reporter Intensities}
+
+The signal variance arises from systematic and stochastic noise.
+Individual reporters measure the same amount of DNA with different
+efficiency due to reporter sequence characteristics \cite{Royce2007},
+such as GC content, secondary structure, and cross-hybridization.
+To ameliorate these reporter effects as well as the stochastic noise, 
+we perform a smoothing over individual reporter intensities before
+looking for ChIP-enriched regions.
+We slide a window of 900~bp width along the chromosome and replace the
+intensity at genomic position $x_0$ by the median over the intensities
+of those reporters mapped inside the window centered at $x_0$.
+Factors to take into account when choosing the width of the sliding window
+are the size distribution of DNA fragments after sonication 
+and the spacing between reporter matches on the genome.
+%
+<<smoothing, cache=TRUE, results=hide>>=
+smoothX <- computeRunningMedians(X, probeAnno=probeAnno, 
+  modColumn="Tissue", allChr=allChrs, winHalfSize=450, min.probes=5)
+sampleNames(smoothX) <- paste(sampleNames(X),"smoothed",sep=".")
+combX <- cbind2(X, smoothX)
+@
+%
+Compare the smoothed reporter intensities with the original ones around the
+start of the gene~\textsl{Actc1}.
+%
+<<smoothAlongChromActc1, eval=TRUE, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
+plot(combX, probeAnno, chrom="2", xlim=c(113.8725e6,113.8835e6),
+     ylim=c(-3,5), gff=mm9genes, 
+     colPal=c(brewer.pal(8,"Set2")[1:2],brewer.pal(8,"Dark2")[1:2]))
+@
+%
+See the result in Figure~\ref{ccTutorial-smoothAlongChromActc1}.
+After smoothing, the reporters give a more concise picture that
+there is H3K4me3 enrichment inside and upstream of
+\textsl{Actc1} in heart but not in brain cells. 
+
+
+\section*{Finding ChIP-enriched Regions}
+
+We would like to determine a discrete set of regions that appear
+antibody-enriched, together with a quantitative score
+of our confidence in that and a measure
+of their enrichment strength. % for ranking them.  
+Which approach is best for this purpose
+depends on the microarray design, 
+on the biological question and on the subsequent use of the
+regions, e.g., in a follow-up experiment or computational analysis.
+Below, we describe one possible approach, but before that we
+discuss two more conceptual aspects.
+
+In the literature, a computed confidence score is often
+mixed up with the term ``$p$-value''. 
+Speaking of a $p$-value is meaningful only if there is a
+defined null hypothesis and a probability interpretation; 
+these complications are not necessary  if the goal is simply to find
+and rank regions in some way that can be reasonably calibrated.
+
+Furthermore, it is helpful to distinguish between our confidence in an
+enrichment being present, and the strength of the enrichment. Although
+stronger enrichments tend to result in stronger signals and hence less
+ambiguous calls, our certainty about an enrichment should also be
+affected by reporter coverage, sequence, cross-hybridization etc.
+
+Let us now consider the following simple approach: for an enriched
+region, require that the smoothed reporter levels all exceed a
+certain threshold $y_0$, that the region contains at least
+$n_{\mbox{\scriptsize min}}$ reporter match positions, and that each
+of these is less than $d_{\mbox{\scriptsize max}}$ basepairs apart
+from the nearest other affected position in the region.
+
+The minimum number of reporters rule ($n_{\mbox{\scriptsize min}}$)
+might seem redundant with the smoothing median computation
+(since a smoothed reporter intensity is already the median of all the
+reporter intensities in the window), but it plays its role in reporter
+sparse regions, where a window may only contain one or a few
+reporters.
+One wants to avoid making calls supported by only few reporters.\\
+The $d_{\mbox{\scriptsize max}}$
+rule prevents us from calling disconnected regions.
+
+
+\phead{Setting the Enrichment Threshold.}
+The optimal approach for setting the enrichment threshold $y_0$
+would be to tune it by considering sets of positive and negative
+control regions.
+As such control regions are often not available, as with the current
+data, we choose a mixture modeling approach.
+
+The distribution of the smoothed reporter levels $y$ can be modeled as
+a mixture of two underlying distributions.
+One is the null distribution ${\cal L}_0$ of reporter levels in
+non-enriched regions; the other is the alternative distribution
+${\cal L}_{\mbox{\scriptsize alt}}$ of the levels in enriched
+regions.
+
+The challenge is to estimate the null distribution ${\cal L}_0$.
+In \Rpackage{Ringo}, an estimate $\widehat{{\cal L}}_0$ is derived
+based on the empirical distribution of smoothed reporter levels,
+as visualized in Figure~\ref{ccTutorial-histogramsSmoothed}.
+
+<<computeY0, echo=FALSE>>=
+y0 <- apply(exprs(smoothX), 2, upperBoundNull, prob=0.99)
+@
+%
+<<histogramsSmoothed, eval=TRUE, fig=TRUE, include=FALSE, width=7, height=7>>=
+myPanelHistogram <- function(x, ...){
+  panel.histogram(x, col=brewer.pal(8,"Dark2")[panel.number()], ...)
+  panel.abline(v=y0[panel.number()], col="red")
+}
+
+h = histogram( ~ y | z, 
+      data = data.frame(
+        y = as.vector(exprs(smoothX)), 
+        z = rep(X$Tissue, each = nrow(smoothX))), 
+      layout = c(1,2), nint = 50, 
+      xlab = "smoothed reporter level [log2]",
+      panel = myPanelHistogram)
+
+print(h)
+@ 
+%
+The histograms motivate the following assumptions on the two mixture
+components ${\cal L}_0$ and ${\cal L}_{\mbox{\scriptsize alt}}$:
+the null distribution ${\cal L}_0$ has most of its mass
+close to its mode $m_0$, which is close to $y=0$, and it is symmetric 
+about $m_0$;
+the alternative distribution ${\cal L}_{\mbox{\scriptsize alt}}$ is
+more spread out and has almost all of its mass to the right of $m_0$.
+
+Based on these assumptions, we can estimate ${\cal L}_0$ as follows.
+The mode $m_0$ can be found by the midpoint of
+the shorth of those $y$ that fall into
+the interval $[-1,1]$ (on a $\log_2$ scale).
+The distribution ${\cal L}_0$ is then estimated from the empirical
+distribution of $m_0 - \vert y - m_0 \vert$,
+i.\,e.\ by reflecting $y < m_0$ onto $y > m_0$.
+From the estimated null distribution, an enrichment threshold $y_0$
+can be determined, for example the $99.9\%$ quantile.
+%
+<<computeY0Echo, eval=FALSE>>=
+y0 <- apply(exprs(smoothX), 2, upperBoundNull, prob=0.99)
+@ 
+%
+The values $y_0$ estimated in this way are indicated by red vertical
+lines in the histograms in
+Figure~\ref{ccTutorial-histogramsSmoothed}.
+Antibodies vary in their efficiency to bind to their target epitope,
+and the noise level in the data depends on the sample DNA.
+Thus, $y_0$ should be computed separately for each antibody and cell
+type, as the null and alternative distributions, ${\cal L}_0$ and
+${\cal L}_{\mbox{\scriptsize alt}}$, may vary.
+
+This algorithm has been used in previous studies~\cite{Schwartz2006}.
+A critical parameter in algorithms for the detection of ChIP-enriched
+regions is the fraction of reporters on the array that are expected to
+show enrichment. For the detection of in-vivo TF binding sites, it is
+reasonable to assume that this fraction is small, and most published
+algorithms rely on this assumption. However, the assumption does not
+necessarily hold for ChIP against histone modifications. The algorithm
+presented works as long as there is a discernible population of
+non-enriched reporter levels, even if the fraction of enriched levels
+is quite large.
+
+Another aspect of ChIP-chip data is the serial correlation between
+reporters, and there are approaches that aim to model such
+correlations~\cite{BourgonPhD,Kuan2008}.
+
+
+\phead{ChIP-enriched Regions.}
+We are now ready to identify H3K4me3 ChIP-enriched regions in the
+data. We set $n_{\mbox{\scriptsize min}}=5$ and
+$d_{\mbox{\scriptsize max}}=450$.
+
+<<cherFinding, eval=TRUE, results=hide, cache=TRUE>>=
+chersX <- findChersOnSmoothed(smoothX, 
+   probeAnno = probeAnno, 
+   thresholds = y0, 
+   allChr = allChrs, 
+   distCutOff = 450, 
+   minProbesInRow = 5, 
+   cellType = X$Tissue)
+@ 
+%
+We relate found ChIP-enriched regions to gene coordinates
+retrieved from the Ensembl database (see above).
+An enriched region is regarded as \emph{related} to a gene if its
+center position is located less than 5~kb upstream of a gene's start
+coordinate or between a gene's start and end coordinates.
+%
+<<relateChers, eval=TRUE, results=hide>>=
+chersX <- relateChers(chersX, mm9genes, upstream=5000)
+@
+%
+<<loadCherFinding, eval=FALSE, echo=FALSE>>=
+# since especially the call to relateChers takes some time, we load the
+## pre-saved image here:
+data("chersX")
+@ 
+%
+One characteristic of enriched regions that can be used for ranking
+them is the \emph{area under the curve} score, that is the sum of the
+smoothed reporter levels each minus the threshold.  Alternatively, one
+can rank them by the highest smoothed reporter level in the enriched
+region.
+%
+<<showChers, results=hide>>=
+chersXD <- as.data.frame(chersX)
+head(chersXD[
+  order(chersXD$maxLevel, decreasing=TRUE), 
+  c("chr", "start", "end", "cellType", "features", "maxLevel", "score")])
+@ 
+See the result in Table~\ref{tab-chersXD}.
+%
+We visualize the intensities around the region with the highest
+smoothed level.
+%
+<<plotCher1, eval=TRUE, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
+plot(chersX[[which.max(chersXD$maxLevel)]], smoothX, probeAnno=probeAnno, 
+     gff=mm9genes, paletteName="Dark2", ylim=c(-1,6))
+@ 
+%
+Figure~\ref{ccTutorial-plotCher1} displays this region,
+which covers the gene \emph{Tcfe3}.
+
+
+\section*{Comparing ChIP-enrichment between the Tissues}
+
+There are several ways to compare the
+H3K4me3 enrichment between the two tissues.
+How many ChIP-enriched regions do we find in each tissue?
+
+<<showCellType>>=
+table(chersXD$cellType)
+@ 
+
+Brain cells show a higher number of H3K4me3-enriched regions than
+heart cells. Which genes show tissue-specific association to
+H3K4me3 ChIP-enriched regions?
+%
+<<getGenesEnrichedPerTissue, cache=TRUE>>=
+brainGenes <- getFeats(chersX[sapply(chersX, cellType)=="brain"])
+heartGenes <- getFeats(chersX[sapply(chersX, cellType)=="heart"])
+brainOnlyGenes <- setdiff(brainGenes, heartGenes)
+heartOnlyGenes <- setdiff(heartGenes, brainGenes)
+@ 
+%
+We use the Bioconductor package \Rpackage{topGO} \cite{Alexa2006}
+to investigate whether tissue-specific H3K4me3-enriched genes can be 
+summarized by certain biological themes.
+\Rpackage{topGO} employs the Fisher test to assess whether among a
+list of genes, the fraction annotated with a certain GO term is
+significantly higher than expected by chance, considering all genes
+that are represented on the microarrays and have GO annotation.
+We set a $p$-value cutoff of $0.001$, and the evaluation starts
+from the most specific GO nodes in a bottom-up approach. Genes that 
+are used for evaluating a node are not used for evaluating any
+of its ancestor nodes \cite[\emph{elim} algorithm]{Alexa2006}. 
+
+<<useTopGO, results=hide, cache=TRUE>>=
+brainRes <- sigGOTable(brainOnlyGenes, gene2GO=mm9.gene2GO,
+                       universeGenes=arrayGenesWithGO)
+print(brainRes)
+@
+%
+See the result GO terms in Table~\ref{tab-brainResGO}.
+We perform the same analysis for genes showing heart-specific relation
+to  H3K4me3 enrichment.
+%
+<<useTopGOHeart, results=hide, cache=TRUE>>=
+heartRes <- sigGOTable(heartOnlyGenes,  gene2GO=mm9.gene2GO,
+                       universeGenes=arrayGenesWithGO)
+print(heartRes)
+@ 
+%
+See the result in Table \ref{tab-heartResGO}. Genes that show H3K4me3
+in brain but not in heart cells are significantly often involved in
+neuron-specific biological processes.
+Genes marked by H3K4me3 specifically in heart cells
+show known cardiomyocyte functions, amongst others.
+
+This analysis could be repeated for the \emph{cellular component} and
+\emph{molecular function} ontologies of the GO.
+Besides GO, other databases that collect gene lists can be used for this
+kind of gene set enrichment analysis.  For, example the
+Kyoto Encyclopedia of Genes and Genomes (KEGG) \cite{Kanehisa1997}
+is also available in Bioconductor.
+
+In Text~S1, we present an additional way for comparing H3K4me3
+enrichment between the two tissue,
+an enriched-region-wise comparison considering the actual overlap
+of the enriched regions.
+
+
+\section*{ChIP Results and Expression Microarray Data}
+
+We compare the H3K4me3 ChIP-chip results with the expression
+microarray data, which Barrera~\emph{et~al.}\cite{Barrera2008} provide
+for the same \emph{M. musculus} tissues they analyzed with ChIP-chip.
+%
+<<loadExpressionData>>=
+data("barreraExpressionX")
+@ 
+%
+The data were generated using the \texttt{Mouse\_430\_2} 
+oligonucleotide microarray platform from Affymetrix
+and preprocessed using Affymetrix's MAS5 method.
+Using \Rpackage{biomaRt}, we created a mapping of Ensembl gene 
+identifiers to the probe set identifiers on that microarray
+platform (see Text~S1 for the source code).
+%
+<<loadArrayGenesToProbeSets, results=hide>>=
+data("arrayGenesToProbeSets")
+@ 
+%
+We obtain the expression values for genes related to
+H3K4me3-enriched regions in heart or brain cells. 
+%
+<<compareChIPAndExpression>>=
+bX <- exprs(barreraExpressionX)
+allH3K4me3Genes  <- union(brainGenes, heartGenes)
+allH3K4ProbeSets <- unlist(arrayGenesToProbeSets[allH3K4me3Genes])
+noH3K4ProbeSets  <- setdiff(rownames(bX), allH3K4ProbeSets)
+brainH3K4ExclProbeSets <- unlist(arrayGenesToProbeSets[brainOnlyGenes])
+heartH3K4ExclProbeSets <- unlist(arrayGenesToProbeSets[heartOnlyGenes])
+
+brainIdx <- barreraExpressionX$Tissue=="Brain"
+
+brainExpression <- list(
+  H3K4me3BrainNoHeartNo  = bX[noH3K4ProbeSets, brainIdx],
+  H3K4me3BrainYes        = bX[allH3K4ProbeSets, brainIdx],
+  H3K4me3BrainYesHeartNo = bX[brainH3K4ExclProbeSets, brainIdx],
+  H3K4me3BrainNoHeartYes = bX[heartH3K4ExclProbeSets, brainIdx]
+)
+@
+%
+We use boxplots to compare the brain expression levels of genes with
+and without H3K4me3 enriched regions in brain/heart cells.
+%
+<<H3K4me3VsExpression, eval=TRUE, fig=TRUE, include=FALSE, width=9, height=7, boxplot=FALSE, results=hide>>=
+boxplot(brainExpression, col=c("#666666","#999966","#669966","#996666"), 
+        names=NA, varwidth=TRUE, log="y", 
+        ylab='gene expression level in brain cells')
+mtext(side=1, at=1:length(brainExpression), padj=1, font=2, 
+      text=rep("H3K4me3",4), line=1)
+mtext(side=1, at=c(0.2, 1:length(brainExpression)), padj=1, font=2, 
+      text=c("brain/heart","-/-","+/+","+/-","-/+"), line=2)
+@
+
+%
+See the boxplots in Figure~\ref{ccTutorial-H3K4me3VsExpression}.
+Genes related to H3K4me3 ChIP-enriched regions show higher expression levels
+than those that are not, as we can assess using the Wilcoxon rank sum test.
+%
+<<testExpressionGreater>>=
+with(brainExpression, 
+     wilcox.test(H3K4me3BrainYesHeartNo, H3K4me3BrainNoHeartNo, 
+                 alternative="greater"))
+@
+
+
+\section*{Discussion}
+
+% Specific biological conclusions
+The analysis of the ChIP-chip and transcription data of
+Barrera~\emph{et~al.}\cite{Barrera2008} showed that genes that are 
+expressed in specific tissues are marked by tissue-specific H3K4me3
+modification. This finding agrees with previous reports
+that H3K4me3 is a marker of active gene
+transcription~\cite{Santos-Rosa2002}.
+
+% R/Bioc can analyze ChIP-chip data
+We have shown how to use the freely available tools R and Bioconductor
+for the analysis of ChIP-chip data. We demonstrated ways to assess
+data quality, to visualize the data and to find ChIP-enriched regions.
+
+% What we did not / cannot do
+As with any high-throughput technology, there are aspects of ChIP-chip
+experiments that need close attention, such as specificity and
+sensitivity of the antibodies, and potential cross-hybridization of
+the microarray reporters. Good experiments will contain appropriate
+controls, in the presence of which the software can be used to
+monitor and assess these issues.
+
+% Further software and ideas
+In addition to the ones introduced here, there are other Bioconductor
+packages that provide further functionality, e.\,g.\ \Rpackage{ACME}
+\cite{Scacheri2006}, \Rpackage{oligo} and \Rpackage{tilingArray}
+\cite{Huber2006tilingMethods}.
+For analyses that go beyond pairwise comparisons of samples and use
+more complex \mbox{(multi-)}\-factorial experimental designs or 
+retrospective studies of collections of tissues from patients, 
+the  package \Rpackage{limma} \cite{Limma05} offers a powerful 
+statistical modeling interface and facilitates computation of
+appropriate reporter-wise statistics.
+
+% R/Bioc for follow up data integration
+We also demonstrated a few conceivable follow-up investigations.
+Bioconductor allows for easy integration of ChIP-chip results with
+other resources, such as annotated genome elements, gene expression
+data, or DNA-protein interaction networks.
+
+\small
+\section*{Software Versions}
 
 This tutorial was generated using the following package versions:
 
 <<sessionInfo, echo=FALSE, results=tex>>=
 toLatex(sessionInfo())
 @
+
+\small
+\section*{Acknowledgments}
+
+We thank Richard Bourgon and two reviewers for valuable comments on
+the manuscript, and Leah O. Barrera, Bing Ren and co-workers 
+for making their ChIP-chip data publicly available.
+%This work was supported by the 
+%European Union (FP6 HeartRepair, LSHM-CT-2005-018630).
+
+%%% BIBLIOGRAPHY STARTS HERE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliographystyle{plos}
+\bibliography{ccTutorial.bib}
+
+%%%% Tables and Figures in the end %%%%
+\clearpage
+\section*{Tables}
+<<remarkTables, eval=FALSE, echo=FALSE>>=
+# the purpose of the following chunks is merely to provide pretty
+# latex-formated output of the tables generated in the tutorial
+@
+%
+<<printMm9Genes, echo=FALSE, results=tex>>=
+print(xtable(mm9genes[sample(nrow(mm9genes), 4), 
+   c("name", "chr", "strand", "start", "end", "symbol")],
+   label="tab-mm9genes",
+   caption="\\sl An excerpt of the object 'mm9genes'."),
+   type="latex", table.placement="h!t", size="scriptsize",
+   include.rownames=FALSE)
+@
+\vspace{1.5cm}
+%
+<<printChersXD, echo=FALSE, results=tex>>=
+print(xtable(head(chersXD[order(chersXD$maxLevel, decreasing=TRUE), 
+  c("chr", "start", "end", "cellType", "features", "maxLevel", "score")]),
+  label="tab-chersXD",
+  caption="\\sl The first six lines of object 'chersXD'."),
+  type="latex", table.placement="h!t", size="scriptsize",
+  include.rownames=FALSE)
+@
+%
+\vspace{1.5cm}
+<<printBrainRes, echo=FALSE, results=tex>>=
+## for having prettier tables in the PDF, we use 'xtable' here:
+print(xtable(brainRes, label="tab-brainResGO", 
+   caption="\\sl GO terms that are significantly over-represented among genes showing H3K4me3 enrichment specifically in brain cells"),
+   type="latex", table.placement="h!t", size="scriptsize",
+   include.rownames=FALSE)
+@
+%
+\vspace{1.5cm}
+<<printHeartRes, echo=FALSE, results=tex>>=
+print(xtable(heartRes, label="tab-heartResGO",
+   caption="\\sl GO terms that are significantly over-represented among genes showing H3K4me3 enrichment specifically in heart cells"),
+   type="latex", table.placement="h!b", size="scriptsize",
+   include.rownames=FALSE)
+@
+
+\clearpage
+\section*{Figure Legends}
+
+%% Figure 1
+\myincfig{ccTutorial-chipAlongChromActc1}{0.98\textwidth}{Normalized reporter intensities for H3K4me3 ChIP around the TSS of the gene~\textsl{Actc1} in \textsl{M. musculus} brain and heart cells. The ticks on the genomic coordinate axis below indicate genomic positions matched by reporters on the microarray. The blue box below the genomic coordinate axis marks the gene~\textsl{Actc1} with the position below the axis indicating that the gene is located on the Crick strand.}
+
+
+%% Figure 2
+\myincfig{ccTutorial-smoothAlongChromActc1}{0.98\textwidth}{Normalized
+  and smoothed reporter intensities for H3K4me3 ChIP around the TSS of
+  the gene~\textsl{Actc1} in \emph{M. musculus} brain and heart cells.}
+
+
+%% Figure 3
+\myincfig{ccTutorial-histogramsSmoothed}{0.7\textwidth}{Histograms of
+  reporter intensities after smoothing of reporter levels, measured in
+  \emph{M. musculus} heart and brain cells. The red vertical lines are
+  the cutoff values suggested by the algorithm described in the text.}
+
+
+%% Figure 4
+\myincfig{ccTutorial-plotCher1}{0.98\textwidth}{This genomic region
+is the H3K4me3 ChIP-enriched region with the highest smoothed reporter
+level.}
+
+
+%% Figure 5
+\myincfig{ccTutorial-H3K4me3VsExpression}{0.9\textwidth}{
+Boxplots for comparing gene expression levels in brain cells. Genes are
+stratified by whether or not they are related to H3K4me3 ChIP-enriched regions 
+in brain and/or heart cells according to ChIP-chip. The width of the boxes is
+proportional to the number of genes in each stratification group.}
+
 
 \end{document}
