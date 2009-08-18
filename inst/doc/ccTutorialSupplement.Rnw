@@ -280,7 +280,7 @@ For the data of Barrera~\textit{et~al.}~\cite{Barrera2008}, we
 construct one picture showing the spatial distributions for all arrays
 and both channels.
 
-<<imageRG, eval=TRUE, results=hide,echo=TRUE>>=
+<<imageRG, results=hide,echo=TRUE>>=
 RG1breaks <- c(0,quantile(RGs[[1]]$G, probs=seq(0,1,by=0.1)),2^16)
 png("ccTutorialArrayImages.png", units="in", res=200,
      height=10.74*1.5, width=7.68*1.5)
@@ -499,7 +499,7 @@ Using the Bioconductor package \Rpackage{biomaRt} \cite{Durinck2005},
 we can obtain an up-to-date annotation of the mouse genome
 from the Ensembl data base \cite{Birney2004}.
 
-<<makeGffWithBiomaRt, cache=TRUE, eval=TRUE>>=
+<<makeGffWithBiomaRt, cache=TRUE>>=
 ensembl  <- useMart("ensembl", dataset="mmusculus_gene_ensembl")
 gene.ids <- unique(unlist(lapply(as.list(c(1:19,"X","Y")), 
    function(this.chr) 
@@ -514,7 +514,7 @@ mm9genes <- getBM(attributes=sel.attributes, filters="ensembl_gene_id",
 For later use, we replace the formal element names retrieved
 from the data base by simpler ones.
 %
-<<replaceMm9GenesNames, eval=TRUE>>=
+<<replaceMm9GenesNames>>=
 mm9genes$name    <- mm9genes$"ensembl_gene_id"
 mm9genes$gene    <- mm9genes$"ensembl_gene_id"
 mm9genes$chr     <- mm9genes$"chromosome_name"
@@ -529,7 +529,7 @@ more than one MGI Symbol defined for it. We keep allow only one row in the
 table per gene and append additional MGI symbols to the \emph{description}
 element of each gene.
 %
-<<removeDuplicatedSymbols, eval=TRUE>>=
+<<removeDuplicatedSymbols>>=
 if (any(duplicated(mm9genes$name))){
   dupl <- unique(mm9genes$name[duplicated(mm9genes$name)])
   G <- lapply(as.list(dupl), function(this.gene){
@@ -557,7 +557,7 @@ if (any(duplicated(mm9genes$name))){
 @ 
 %
 Finally, we reorder the table rows by gene chromosome and start position.
-<<reorderMm9, eval=TRUE>>=
+<<reorderMm9>>=
 mm9genes <- mm9genes[order(mm9genes$chr, mm9genes$start),
   c("name","chr","strand","start","end","symbol","description","feature")]
 rownames(mm9genes) <- NULL
@@ -587,7 +587,7 @@ that have only been
 are based on a \emph{non-traceable author statement} (NAS) 
 or for which there is \emph{no biological data} (ND) available.
 %
-<<getGenesGOAnnotation, cache=TRUE, eval=TRUE>>=
+<<getGenesGOAnnotation, cache=TRUE>>=
 ensembl  <- useMart("ensembl", dataset="mmusculus_gene_ensembl")
 ontoGOs <- lapply(as.list(c("biological_process","cellular_component", 
                   "molecular_function")), function(onto){
@@ -601,7 +601,7 @@ ontoGOs <- lapply(as.list(c("biological_process","cellular_component",
 mm9GO <- do.call("rbind", ontoGOs)
 @ 
 
-<<getGOperGene, eval=TRUE, cache=TRUE>>=
+<<getGOperGene, cache=TRUE>>=
 mm9.gene2GO <- with(mm9GO, split(go, ensembl_gene_id))
 @ 
 <<loadGenesGOAnnotation, eval=FALSE, echo=FALSE>>=
@@ -612,7 +612,7 @@ data(mm9.g2p)
 Finally, we create a mapping of gene identifiers to reporters that
 had been mapped into the gene or its upstream region.
 %
-<<mappingGenesToProbes, eval=TRUE, cache=TRUE, results=hide>>=
+<<mappingGenesToProbes, cache=TRUE, results=hide>>=
 mm9.g2p <- features2Probes(gff=mm9genes, probeAnno=probeAnno)
 @ 
 %
@@ -999,7 +999,7 @@ sepRegRes <- sigGOTable(selGenes=selGenes, gene2GO=mm9.gene2GO,
                         universeGenes=arrayGenesWithGO)
 print(sepRegRes)
 @ 
-<<printSepRegRes, eval=TRUE, echo=FALSE, results=tex>>=
+<<printSepRegRes, echo=FALSE, results=tex>>=
 # this chunk only provides a prettier output of the table sepRegRes
 #  in latex format
 print(xtable(sepRegRes, label="tab-sepRegResGO", 
@@ -1022,7 +1022,7 @@ The data were obtained from the supplementary web page
 to the publication~\cite{Barrera2008},
 imported into R and preprocessed as follows.
 %
-<<processBarerraExpressionData, eval=TRUE, cache=TRUE, keep.source=TRUE, results=hide>>=
+<<processBarerraExpressionData, cache=TRUE, keep.source=TRUE, results=hide>>=
 library("affy")
 library("mouse4302cdf")
 AB <- ReadAffy(celfile.path=system.file("expression", 
@@ -1039,7 +1039,7 @@ oligonucleotide microarray platform from Affymetrix.
 Using biomaRt, we create a mapping of Ensembl gene identifiers
 to the probe set identifiers on that microarray design.
 % new one for author-provided expression data:
-<<mapEnsToAffy, keep.source=TRUE, eval=TRUE, cache=TRUE, results=hide>>=
+<<mapEnsToAffy, keep.source=TRUE, cache=TRUE, results=hide>>=
 ensembl <- useMart("ensembl", dataset="mmusculus_gene_ensembl")
 bmRes <- getBM(attributes=c("ensembl_gene_id","affy_mouse430_2"), 
                filters="ensembl_gene_id", value=arrayGenes, 

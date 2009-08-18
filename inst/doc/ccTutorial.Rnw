@@ -288,7 +288,7 @@ the mapping of reporters to the genome is stored in a
 \Rclass{probeAnno} class object.
 Text~S1 contains details on its construction.
 %
-<<loadProbeAnno, eval=TRUE>>=
+<<loadProbeAnno>>=
 data("probeAnno")
 allChrs <- chromosomeNames(probeAnno)
 @ 
@@ -358,7 +358,7 @@ Thus, we preprocess the arrays separately by type and combine
 the results into one object holding the preprocessed readouts for all
 reporters.
 %
-<<remark2, eval=FALSE, echo=FALSE>>=
+<<remark2, echo=FALSE>>=
 # the following chunk 'preprocess' requires at least 1GB of RAM
 # and takes about 5 minutes. If time and memory are issues, 
 # instead of running that chunk, you can load the result 'X', the
@@ -405,7 +405,7 @@ We visualize the preprocessed H3K4me3 ChIP-chip reporter levels around
 the start of the gene~\textsl{Actc1}, which encodes the cardiac actin
 protein.
 %
-<<chipAlongChromActc1, eval=TRUE, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
+<<chipAlongChromActc1, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
 plot(X, probeAnno, chrom="2", xlim=c(113.8725e6,113.8835e6), 
      ylim=c(-3,5), gff=mm9genes, paletteName='Set2')
 @
@@ -452,7 +452,7 @@ combX <- cbind2(X, smoothX)
 Compare the smoothed reporter intensities with the original ones around the
 start of the gene~\textsl{Actc1}.
 %
-<<smoothAlongChromActc1, eval=TRUE, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
+<<smoothAlongChromActc1, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
 plot(combX, probeAnno, chrom="2", xlim=c(113.8725e6,113.8835e6),
      ylim=c(-3,5), gff=mm9genes, 
      colPal=c(brewer.pal(8,"Set2")[1:2],brewer.pal(8,"Dark2")[1:2]))
@@ -531,7 +531,7 @@ as visualized in Figure~\ref{ccTutorial-histogramsSmoothed}.
 y0 <- apply(exprs(smoothX), 2, upperBoundNull, prob=0.99)
 @
 %
-<<histogramsSmoothed, eval=TRUE, fig=TRUE, include=FALSE, width=7, height=7>>=
+<<histogramsSmoothed, fig=TRUE, include=FALSE, width=7, height=7>>=
 myPanelHistogram <- function(x, ...){
   panel.histogram(x, col=brewer.pal(8,"Dark2")[panel.number()], ...)
   panel.abline(v=y0[panel.number()], col="red")
@@ -566,7 +566,7 @@ i.\,e.\ by reflecting $y < m_0$ onto $y > m_0$.
 From the estimated null distribution, an enrichment threshold $y_0$
 can be determined, for example the $99.9\%$ quantile.
 %
-<<computeY0Echo, eval=FALSE>>=
+<<computeY0Echo>>=
 y0 <- apply(exprs(smoothX), 2, upperBoundNull, prob=0.99)
 @ 
 %
@@ -600,7 +600,7 @@ We are now ready to identify H3K4me3 ChIP-enriched regions in the
 data. We set $n_{\mbox{\scriptsize min}}=5$ and
 $d_{\mbox{\scriptsize max}}=450$.
 
-<<cherFinding, eval=TRUE, results=hide, cache=TRUE>>=
+<<cherFinding, results=hide, cache=TRUE>>=
 chersX <- findChersOnSmoothed(smoothX, 
    probeAnno = probeAnno, 
    thresholds = y0, 
@@ -616,11 +616,11 @@ An enriched region is regarded as \emph{related} to a gene if its
 center position is located less than 5~kb upstream of a gene's start
 coordinate or between a gene's start and end coordinates.
 %
-<<relateChers, eval=TRUE, results=hide>>=
+<<relateChers, results=hide>>=
 chersX <- relateChers(chersX, mm9genes, upstream=5000)
 @
 %
-<<loadCherFinding, eval=FALSE, echo=FALSE>>=
+<<loadCherFinding, echo=FALSE>>=
 # since especially the call to relateChers takes some time, we load the
 ## pre-saved image here:
 data("chersX")
@@ -643,7 +643,7 @@ See the result in Table~\ref{tab-chersXD}.
 We visualize the intensities around the region with the highest
 smoothed level.
 %
-<<plotCher1, eval=TRUE, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
+<<plotCher1, fig=TRUE, include=FALSE, width=8, height=4, along=TRUE, results=hide>>=
 plot(chersX[[which.max(chersXD$maxLevel)]], smoothX, probeAnno=probeAnno, 
      gff=mm9genes, paletteName="Dark2", ylim=c(-1,6))
 @ 
@@ -765,7 +765,7 @@ brainExpression <- list(
 We use boxplots to compare the brain expression levels of genes with
 and without H3K4me3 enriched regions in brain/heart cells.
 %
-<<H3K4me3VsExpression, eval=TRUE, fig=TRUE, include=FALSE, width=9, height=7, boxplot=FALSE, results=hide>>=
+<<H3K4me3VsExpression, fig=TRUE, include=FALSE, width=9, height=7, boxplot=FALSE, results=hide>>=
 boxplot(brainExpression, col=c("#666666","#999966","#669966","#996666"), 
         names=NA, varwidth=TRUE, log="y", 
         ylab='gene expression level in brain cells')
