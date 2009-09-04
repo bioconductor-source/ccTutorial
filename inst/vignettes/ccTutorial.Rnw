@@ -862,7 +862,7 @@ print(xtable(mm9genes[sample(nrow(mm9genes), 4),
    type="latex", table.placement="h!t", size="scriptsize",
    include.rownames=FALSE)
 @
-\vspace{1.5cm}
+\vspace{0.5cm}
 %
 <<printChersXD, echo=FALSE, results=tex>>=
 print(xtable(head(chersXD[order(chersXD$maxLevel, decreasing=TRUE), 
@@ -873,7 +873,7 @@ print(xtable(head(chersXD[order(chersXD$maxLevel, decreasing=TRUE),
   include.rownames=FALSE)
 @
 %
-\vspace{1.5cm}
+\vspace{0.5cm}
 <<printBrainRes, echo=FALSE, results=tex>>=
 ## for having prettier tables in the PDF, we use 'xtable' here:
 print(xtable(brainRes, label="tab-brainResGO", 
@@ -882,7 +882,7 @@ print(xtable(brainRes, label="tab-brainResGO",
    include.rownames=FALSE)
 @
 %
-\vspace{1.5cm}
+\vspace{0.5cm}
 <<printHeartRes, echo=FALSE, results=tex>>=
 print(xtable(heartRes, label="tab-heartResGO",
    caption="\\sl GO terms that are significantly over-represented among genes showing H3K4me3 enrichment specifically in heart cells"),
