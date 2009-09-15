@@ -18,9 +18,12 @@ Formal class 'probeAnno' [package "Ringo"]
   For sake of speed and for computers with small amounts of RAM, we also
   provide it as a data object here.
 }
-\seealso{\code{\link[Ringo]{probeAnno-class}}}
+\seealso{\code{\link[Ringo:probeAnnoClass]{probeAnno-class}}}
 \examples{
-\dontrun{data("probeAnno"); show(probeAnno);
-         chromosomeNames(probeAnno)}
+\dontrun{
+data("probeAnno")
+show(probeAnno)
+chromosomeNames(probeAnno)
+}
 }
 \keyword{datasets}

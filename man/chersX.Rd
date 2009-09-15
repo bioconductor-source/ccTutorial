@@ -14,7 +14,7 @@
 %\details{}
 %\source{}
 %\references{}
-\seealso{\code{\link[Ringo]{cher-class}}}
+\seealso{\code{\link[Ringo:cherClass]{cher-class}}}
 \examples{
 data(chersX)
 head(chersX)

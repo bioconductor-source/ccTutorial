@@ -22,9 +22,11 @@
   here as well.
 }
 %\source{}
-\seealso{\code{\link[Biobase]{ExpressionSet-class}},
+\seealso{\code{\link[Biobase:class.ExpressionSet]{ExpressionSet}},
   \code{\link[Ringo]{preprocess}}}
 \examples{
-data("X"); show(X); pData(X)
+data("X")
+show(X)
+pData(X)
 }
 \keyword{datasets}

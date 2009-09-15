@@ -20,7 +20,7 @@
 }
 %\source{}
 %\references{}
-\seealso{\code{\link[Biobase]{ExpressionSet-class}},
+\seealso{\code{\link[Biobase:class.ExpressionSet]{ExpressionSet}},
   \code{\link[affy]{mas5}}}
 \examples{
 data(barreraExpressionX)
