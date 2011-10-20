@@ -1,5 +1,5 @@
 
-.First.lib <- function(libname, pkgname) {
+.onLoad <- function(libname, pkgname) {
     
   if(.Platform$OS.type == "windows" && require(Biobase) && interactive()
      && .Platform$GUI ==  "Rgui"){
