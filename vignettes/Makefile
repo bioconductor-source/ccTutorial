@@ -1,9 +1,7 @@
-all:	pdf supp
+all: buildclean
 
-pdf:	ccTutorial.tex
-	cp ../inst/vignettes/ccTutorial.pdf ../inst/doc
-	#cp -f ../vignettes/ccTutorial.Rnw .
+%.pdf: %.tex
+	cp ../inst/vignettes/$@ ./
 
-supp:	ccTutorialSupplement.tex
-	cp ../inst/vignettes/ccTutorialSupplement.pdf ../inst/doc
-	#cp -f ../vignettes/ccTutorialSupplement.Rnw .
+buildclean: ccTutorial.pdf ccTutorialSupplement.pdf
+	rm -f *.tex
