@@ -1,11 +1,11 @@
 Package: ccTutorial
 Type: Package
 Title: Data package for ChIP-chip tutorial
-Version: 1.5.0
+Version: 1.5.1
 Date: 2009-09-14
 Author: Joern Toedling, Wolfgang Huber
 Maintainer: Joern Toedling <joern.toedling@curie.fr>
-Depends:  R (>= 2.10), Ringo(>= 1.9.8), affy(>= 1.23.4), topGO(>= 1.13.1)
+Depends: R (>= 2.10), Ringo(>= 1.9.8), affy(>= 1.23.4), topGO(>= 1.13.1)
 Imports: Biobase
 Suggests: biomaRt, Biobase(>= 2.5.5), xtable
 Description: This is a data package that accompanies a ChIP-chip
@@ -16,4 +16,4 @@ References: Joern Toedling and Wolfgang Huber (2008)
             Analyzing ChIP-chip Data Using Bioconductor.
             PLoS Computational Biology, 4(11):e1000227.
 License: Artistic-2.0
-biocViews: ExperimentData, ChIPchipData
+biocViews: ExperimentData, Mus_musculus_Data, MicroarrayData, ChipOnChipData
