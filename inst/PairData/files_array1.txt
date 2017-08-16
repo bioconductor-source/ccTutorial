@@ -1,0 +1,3 @@
+"SlideNumber"	"FileNameCy3"	"FileNameCy5"	"DESIGN_NAME"	"SAMPLE_SPECIES"	"Cy3"	"Cy5"	"Tissue"
+48153	"48153_532.pair"	"48153_635.pair"	"2005-06-17_Ren_MM5Tiling_Set1"	"Mus_musculus"	"input"	"H3K4me3"	"brain"
+48170	"48170_532.pair"	"48170_635.pair"	"2005-06-17_Ren_MM5Tiling_Set1"	"Mus_musculus"	"input"	"H3K4me3"	"heart"
