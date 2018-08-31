@@ -107,8 +107,9 @@ Follow these steps from within R to install the required package
 (the data package \Rpackage{ccTutorial} is $> 300$~MB in size).
 %
 <<installPackages, eval=FALSE>>=
-source("http://www.bioconductor.org/biocLite.R")
-biocLite(c("Ringo", "biomaRt", "topGO", "ccTutorial"))
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install(c("Ringo", "biomaRt", "topGO", "ccTutorial"))
 @ 
 %
 Further information about the installation of Bioconductor packages
