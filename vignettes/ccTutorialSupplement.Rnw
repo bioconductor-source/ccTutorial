@@ -101,8 +101,8 @@ instructions at \url{http://www.r-project.org}.
 
 For obtaining the Bioconductor packages that are needed
 for redoing this analysis, we recommend
-\Rfunction{biocLite} function from the 
-Bioconductor web site.
+\Rfunction{install} function from the
+BiocManager package.
 Follow these steps from within R to install the required package
 (the data package \Rpackage{ccTutorial} is $> 300$~MB in size).
 %
