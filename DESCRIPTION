@@ -1,7 +1,7 @@
 Package: ccTutorial
 Type: Package
 Title: Data package for ChIP-chip tutorial
-Version: 1.39.0
+Version: 1.39.1
 Date: 2009-09-14
 Author: Joern Toedling, Wolfgang Huber
 Maintainer: Joern Toedling <joern.toedling@curie.fr>
@@ -17,3 +17,4 @@ References: Joern Toedling and Wolfgang Huber (2008)
             PLoS Computational Biology, 4(11):e1000227.
 License: Artistic-2.0
 biocViews: ExperimentData, Mus_musculus_Data, MicroarrayData, ChipOnChipData
+PackageStatus: Deprecated
